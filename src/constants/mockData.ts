@@ -32,6 +32,7 @@ export const CATEGORIES = [
   { id: 'far', name: 'Far Paleti', icon: 'palette' },
   { id: 'oje', name: 'Oje & El', icon: 'scissors' },
   { id: 'cilt', name: 'Cilt Bakım', icon: 'activity' },
+  { id: 'sac', name: 'Saç Bakım', icon: 'wind' },
 ];
 
 export const STORE_NAMES: Record<keyof StorePrices, string> = {
@@ -153,6 +154,20 @@ function generateMassiveProducts(): Product[] {
         'Retinol %1 Kırışıklık Karşıtı Gece Serumu',
         'Centella Asiatica Yatıştırıcı Bariyer Krem',
         'Moisturizing Ceramide Günlük Nemlendirici'
+      ] 
+    },
+    { 
+      id: 'sac', 
+      name: 'Saç Bakım', 
+      prefix: [
+        'Dökülme Karşıtı Kafein Şampuan', 
+        'Keratin Onarıcı Saç Maskesi', 
+        'Argan Yağlı Besleyici Saç Serumu', 
+        'Kolay Tarama Saç Kremi Spreyi', 
+        'Saç Kökü Güçlendirici Tonik',
+        'Isıya Karşı Koruyucu Saç Spreyi',
+        'Yoğun Nemlendirici Saç Kremi',
+        'Kuru Saçlar İçin Şampuan'
       ] 
     }
   ];
@@ -626,6 +641,13 @@ const PRODUCT_VARIATIONS: Record<string, string[]> = {
     "Glikolik Asit %7 Cilt Aydınlatıcı Tonik",
     "Niacinamide %10 Gözenek Sıkılaştırıcı Serum",
     "Natural Moisturizing Nemlendirici Yüz Kremi"
+  ],
+  sac: [
+    "Dökülme Karşıtı Kafein Şampuanı",
+    "Keratin Onarıcı Yoğun Saç Maskesi",
+    "Argan Yağlı Besleyici Saç Bakım Serumu",
+    "Isıya Karşı Koruyucu Parlaklık Spreyi",
+    "Saç Dökülmesini Engelleyen Güçlendirici Tonik"
   ]
 };
 
@@ -696,6 +718,9 @@ export function searchAndSimulateProducts(query: string, categoryId = 'all'): Pr
     } else if (normalizedQuery.includes('cilt') || normalizedQuery.includes('krem') || normalizedQuery.includes('serum') || normalizedQuery.includes('nemlendirici') || normalizedQuery.includes('tonik')) {
       category = 'cilt';
       categoryKey = 'cilt';
+    } else if (normalizedQuery.includes('saç') || normalizedQuery.includes('şampuan') || normalizedQuery.includes('saç kremi') || normalizedQuery.includes('saç spreyi')) {
+      category = 'sac';
+      categoryKey = 'sac';
     } else {
       // Varsayılan kategori anahtarını seçelim
       category = categoryId === 'all' ? 'ruj' : categoryId;
@@ -810,6 +835,11 @@ export function getCategoryImage(category: string, seed = 0): string {
       'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?q=80&w=300&auto=format&fit=crop',
       'https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?q=80&w=300&auto=format&fit=crop',
       'https://images.unsplash.com/photo-1556228720-195a672e8a03?q=80&w=300&auto=format&fit=crop'
+    ],
+    sac: [
+      'https://images.unsplash.com/photo-1562322140-8baeececf3df?q=80&w=300&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?q=80&w=300&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1595853035070-59a39fe84de3?q=80&w=300&auto=format&fit=crop'
     ]
   };
 

@@ -29,7 +29,8 @@ import {
   X, 
   Check, 
   AlertCircle,
-  TrendingUp
+  TrendingUp,
+  Wind
 } from 'lucide-react-native';
 
 import { Colors, Spacing, BottomTabInset } from '@/constants/theme';
@@ -86,6 +87,7 @@ const getCategoryIcon = (iconName: string, color: string, size = 18) => {
     case 'palette': return <Palette color={color} size={size} />;
     case 'scissors': return <Scissors color={color} size={size} />;
     case 'activity': return <Activity color={color} size={size} />;
+    case 'wind': return <Wind color={color} size={size} />;
     default: return <Sparkles color={color} size={size} />;
   }
 };
