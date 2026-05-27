@@ -211,58 +211,80 @@ export default function HomeScreen() {
   const [customBrand, setCustomBrand] = useState('');
   const [customCategory, setCustomCategory] = useState('ruj');
 
+  // Performance Optimization 1: Lazy loading state
+  const [visibleLimit, setVisibleLimit] = useState(30);
+
+  // Reset lazy load limit when filters change
+  React.useEffect(() => {
+    setVisibleLimit(30);
+  }, [searchQuery, selectedCategory, selectedBrand]);
+
+  // Performance Optimization 2: Caching search results to avoid redundant loop cycles
+  const searchQueryFilteredProducts = useMemo(() => {
+    return searchAndSimulateProducts(searchQuery, 'all');
+  }, [searchQuery]);
+
   // Search & filter products
   const products = useMemo(() => {
-    // Get search results
-    let list = searchAndSimulateProducts(searchQuery, selectedCategory);
-    // Filter by brand if selected
+    let list = searchQueryFilteredProducts;
+    if (selectedCategory !== 'all') {
+      list = list.filter(p => p.category === selectedCategory);
+    }
     if (selectedBrand) {
       list = list.filter(p => p.brand.toLowerCase().includes(selectedBrand.toLowerCase()));
     }
     return list;
-  }, [searchQuery, selectedCategory, selectedBrand]);
+  }, [searchQueryFilteredProducts, selectedCategory, selectedBrand]);
 
-  // 1. Compute category counts based on selected brand & search query
+  // Displayed products subset for FlatList virtual rendering
+  const displayedProducts = useMemo(() => {
+    return products.slice(0, visibleLimit);
+  }, [products, visibleLimit]);
+
+  // 1. Compute category counts based on selected brand & search query (using cached base list)
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = { all: 0 };
     CATEGORIES.forEach(c => { if (c.id !== 'all') counts[c.id] = 0; });
 
-    // Run search query filter first (without category filter)
-    const baseList = searchAndSimulateProducts(searchQuery, 'all');
-    
-    // Filter by brand if selected
     const brandFiltered = selectedBrand
-      ? baseList.filter(p => p.brand.toLowerCase().includes(selectedBrand.toLowerCase()))
-      : baseList;
+      ? searchQueryFilteredProducts.filter(p => p.brand.toLowerCase().includes(selectedBrand.toLowerCase()))
+      : searchQueryFilteredProducts;
 
     brandFiltered.forEach(p => {
-      counts.all = (counts.all || 0) + 1;
+      counts.all++;
       if (counts[p.category] !== undefined) {
-        counts[p.category] += 1;
+        counts[p.category]++;
       }
     });
 
     return counts;
-  }, [searchQuery, selectedBrand]);
+  }, [searchQueryFilteredProducts, selectedBrand]);
 
-  // 2. Compute brand counts based on selected category & search query
+  // 2. Compute brand counts based on selected category & search query (using cached base list with normalized loops)
   const brandCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     POPULAR_BRANDS_LIST.forEach(b => { counts[b] = 0; });
 
-    // Run search query filter first
-    const baseList = searchAndSimulateProducts(searchQuery, selectedCategory);
+    const categoryFiltered = selectedCategory !== 'all'
+      ? searchQueryFilteredProducts.filter(p => p.category === selectedCategory)
+      : searchQueryFilteredProducts;
 
-    baseList.forEach(p => {
-      POPULAR_BRANDS_LIST.forEach(b => {
-        if (p.brand.toLowerCase().includes(b.toLowerCase())) {
-          counts[b] = (counts[b] || 0) + 1;
-        }
-      });
+    // Cache normalized brand names to avoid calling toLowerCase() 455,000 times inside the loop
+    const normalizedBrands = POPULAR_BRANDS_LIST.map(b => ({
+      original: b,
+      lower: b.toLowerCase()
+    }));
+
+    categoryFiltered.forEach(p => {
+      const productBrandLower = p.brand.toLowerCase();
+      const match = normalizedBrands.find(nb => productBrandLower.includes(nb.lower));
+      if (match) {
+        counts[match.original]++;
+      }
     });
 
     return counts;
-  }, [searchQuery, selectedCategory]);
+  }, [searchQueryFilteredProducts, selectedCategory]);
 
   const handleAddCustomProduct = () => {
     if (!customName.trim()) return;
@@ -623,12 +645,22 @@ export default function HomeScreen() {
 
       {/* Products Grid */}
       <FlatList
-        data={products}
+        data={displayedProducts}
         keyExtractor={(item) => item.id}
         numColumns={COLUMN_COUNT}
         key={COLUMN_COUNT} // Force re-render if column count changes on rotation/screen size
         contentContainerStyle={[styles.listContainer, { paddingBottom: BottomTabInset + Spacing.five }]}
         showsVerticalScrollIndicator={false}
+        initialNumToRender={12}
+        maxToRenderPerBatch={12}
+        windowSize={5}
+        removeClippedSubviews={Platform.OS === 'android'}
+        onEndReached={() => {
+          if (visibleLimit < products.length) {
+            setVisibleLimit(prev => prev + 30);
+          }
+        }}
+        onEndReachedThreshold={0.5}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <AlertCircle color={themeColors.textSecondary} size={48} />
