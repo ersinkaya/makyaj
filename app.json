@@ -2,7 +2,7 @@
   "expo": {
     "name": "makyaj",
     "slug": "makyaj",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "makyaj",
@@ -21,7 +21,19 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "pwa": {
+        "manifest": {
+          "name": "GlowPrice ✨",
+          "short_name": "GlowPrice",
+          "description": "En Ucuz Makyaj Alışverişi ve Fiyat Karşılaştırma",
+          "background_color": "#FFF5F5",
+          "theme_color": "#E8A7B5",
+          "display": "standalone",
+          "orientation": "portrait",
+          "start_url": "/"
+        }
+      }
     },
     "plugins": [
       "expo-router",
