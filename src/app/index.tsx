@@ -36,6 +36,21 @@ import { Colors, Spacing, BottomTabInset } from '@/constants/theme';
 import { searchAndSimulateProducts, CATEGORIES, Product, getCategoryImage } from '@/constants/mockData';
 import { useWishlist } from '@/context/WishlistContext';
 
+const POPULAR_BRANDS_LIST = [
+  'Maybelline',
+  'L\'Oreal',
+  'NYX',
+  'Pastel',
+  'Flormar',
+  'Golden Rose',
+  'MAC',
+  'Shiseido',
+  'NARS',
+  'Dior',
+  'Clinique',
+  'The Ordinary'
+];
+
 // Helper to get category icons dynamically
 const getCategoryIcon = (iconName: string, color: string, size = 18) => {
   switch (iconName) {
@@ -64,6 +79,7 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
 
   // Suggestions computation
   const suggestions = useMemo(() => {
@@ -80,9 +96,14 @@ export default function HomeScreen() {
 
   // Search & filter products
   const products = useMemo(() => {
-    // If search query is empty, we show all products for that category from database
-    return searchAndSimulateProducts(searchQuery, selectedCategory);
-  }, [searchQuery, selectedCategory]);
+    // Get search results
+    let list = searchAndSimulateProducts(searchQuery, selectedCategory);
+    // Filter by brand if selected
+    if (selectedBrand) {
+      list = list.filter(p => p.brand.toLowerCase().includes(selectedBrand.toLowerCase()));
+    }
+    return list;
+  }, [searchQuery, selectedCategory, selectedBrand]);
 
   const handleAddCustomProduct = () => {
     if (!customName.trim()) return;
@@ -242,6 +263,42 @@ export default function HomeScreen() {
                   ]}
                 >
                   {cat.name}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* Brands Horizontal Scroll */}
+      <View style={styles.brandsWrapper}>
+        <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Markaya Göre Keşfet</Text>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.brandsContainer}
+        >
+          {POPULAR_BRANDS_LIST.map((brandName) => {
+            const isSelected = selectedBrand === brandName;
+            return (
+              <Pressable
+                key={brandName}
+                onPress={() => setSelectedBrand(isSelected ? null : brandName)}
+                style={[
+                  styles.brandBadge,
+                  { 
+                    backgroundColor: isSelected ? themeColors.primary : themeColors.backgroundElement,
+                    borderColor: isSelected ? themeColors.primary : themeColors.border
+                  }
+                ]}
+              >
+                <Text 
+                  style={[
+                    styles.brandLabel, 
+                    { color: isSelected ? '#FFF' : themeColors.text, fontWeight: isSelected ? '700' : '500' }
+                  ]}
+                >
+                  {brandName}
                 </Text>
               </Pressable>
             );
@@ -794,5 +851,30 @@ const styles = StyleSheet.create({
   suggestionText: {
     fontSize: 13,
     flex: 1,
+  },
+  brandsWrapper: {
+    marginVertical: Spacing.two,
+  },
+  brandsContainer: {
+    paddingHorizontal: Spacing.three,
+    gap: Spacing.two,
+    paddingBottom: Spacing.one,
+  },
+  brandBadge: {
+    paddingVertical: Spacing.one + 2,
+    paddingHorizontal: Spacing.three,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  brandLabel: {
+    fontSize: 12,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginHorizontal: Spacing.three,
+    marginBottom: Spacing.two,
   },
 });
