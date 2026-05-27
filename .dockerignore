@@ -1,0 +1,11 @@
+node_modules
+.git
+.expo
+dist
+web-build
+.vscode
+.gemini
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
