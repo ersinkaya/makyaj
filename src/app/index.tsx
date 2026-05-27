@@ -81,12 +81,103 @@ export default function HomeScreen() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
 
+  interface CustomSuggestion {
+    id: string;
+    type: 'brand' | 'category' | 'brand_category' | 'product';
+    label: string;
+    brandName?: string;
+    categoryId?: string;
+    categoryName?: string;
+    product?: Product;
+  }
+
   // Suggestions computation
-  const suggestions = useMemo(() => {
-    if (searchQuery.trim().length < 2) return [];
-    const results = searchAndSimulateProducts(searchQuery, selectedCategory);
-    return results.slice(0, 5); // limit to 5 suggestions
-  }, [searchQuery, selectedCategory]);
+  const suggestions = useMemo<CustomSuggestion[]>(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (q.length < 2) return [];
+
+    const list: CustomSuggestion[] = [];
+
+    // 1. Check Brand Matches
+    const matchingBrands = POPULAR_BRANDS_LIST.filter(b => b.toLowerCase().includes(q));
+    matchingBrands.forEach(b => {
+      if (!list.some(item => item.type === 'brand' && item.brandName === b)) {
+        list.push({
+          id: `brand-${b}`,
+          type: 'brand',
+          label: `${b} Markası`,
+          brandName: b
+        });
+      }
+
+      // Also suggest Brand + Category combinations if there are products
+      CATEGORIES.forEach(cat => {
+        if (cat.id === 'all') return;
+        
+        // Check if there are any products for this brand + category in searchAndSimulateProducts
+        const hasProducts = searchAndSimulateProducts('', 'all').some(p => 
+          p.brand.toLowerCase().includes(b.toLowerCase()) && p.category === cat.id
+        );
+        
+        if (hasProducts) {
+          list.push({
+            id: `brand-cat-${b}-${cat.id}`,
+            type: 'brand_category',
+            label: `${b} - ${cat.name}`,
+            brandName: b,
+            categoryId: cat.id,
+            categoryName: cat.name
+          });
+        }
+      });
+    });
+
+    // 2. Check Category Matches
+    const matchingCategories = CATEGORIES.filter(cat => 
+      cat.id !== 'all' && cat.name.toLowerCase().includes(q)
+    );
+    matchingCategories.forEach(cat => {
+      list.push({
+        id: `cat-${cat.id}`,
+        type: 'category',
+        label: `${cat.name} Kategorisi`,
+        categoryId: cat.id,
+        categoryName: cat.name
+      });
+    });
+
+    // 3. Check Product Matches
+    const matchedProducts = searchAndSimulateProducts(searchQuery, 'all');
+    matchedProducts.slice(0, 5).forEach(p => {
+      list.push({
+        id: `prod-${p.id}`,
+        type: 'product',
+        label: `${p.brand} ${p.name}`,
+        product: p
+      });
+    });
+
+    return list.slice(0, 8);
+  }, [searchQuery]);
+
+  const handleSuggestionSelect = (item: CustomSuggestion) => {
+    if (item.type === 'brand' && item.brandName) {
+      setSelectedBrand(item.brandName);
+      setSelectedCategory('all');
+      setSearchQuery('');
+    } else if (item.type === 'category' && item.categoryId) {
+      setSelectedCategory(item.categoryId);
+      setSelectedBrand(null);
+      setSearchQuery('');
+    } else if (item.type === 'brand_category' && item.brandName && item.categoryId) {
+      setSelectedBrand(item.brandName);
+      setSelectedCategory(item.categoryId);
+      setSearchQuery('');
+    } else if (item.type === 'product' && item.product) {
+      router.push({ pathname: '/product/[id]', params: { id: item.product.id } });
+    }
+    setShowSuggestions(false);
+  };
   
   // Custom product modal state
   const [modalVisible, setModalVisible] = useState(false);
@@ -104,6 +195,48 @@ export default function HomeScreen() {
     }
     return list;
   }, [searchQuery, selectedCategory, selectedBrand]);
+
+  // 1. Compute category counts based on selected brand & search query
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: 0 };
+    CATEGORIES.forEach(c => { if (c.id !== 'all') counts[c.id] = 0; });
+
+    // Run search query filter first (without category filter)
+    const baseList = searchAndSimulateProducts(searchQuery, 'all');
+    
+    // Filter by brand if selected
+    const brandFiltered = selectedBrand
+      ? baseList.filter(p => p.brand.toLowerCase().includes(selectedBrand.toLowerCase()))
+      : baseList;
+
+    brandFiltered.forEach(p => {
+      counts.all = (counts.all || 0) + 1;
+      if (counts[p.category] !== undefined) {
+        counts[p.category] += 1;
+      }
+    });
+
+    return counts;
+  }, [searchQuery, selectedBrand]);
+
+  // 2. Compute brand counts based on selected category & search query
+  const brandCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    POPULAR_BRANDS_LIST.forEach(b => { counts[b] = 0; });
+
+    // Run search query filter first
+    const baseList = searchAndSimulateProducts(searchQuery, selectedCategory);
+
+    baseList.forEach(p => {
+      POPULAR_BRANDS_LIST.forEach(b => {
+        if (p.brand.toLowerCase().includes(b.toLowerCase())) {
+          counts[b] = (counts[b] || 0) + 1;
+        }
+      });
+    });
+
+    return counts;
+  }, [searchQuery, selectedCategory]);
 
   const handleAddCustomProduct = () => {
     if (!customName.trim()) return;
@@ -215,21 +348,53 @@ export default function HomeScreen() {
       {showSuggestions && suggestions.length > 0 && (
         <View style={[styles.suggestionsDropdown, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}>
           <ScrollView keyboardShouldPersistTaps="handled">
-            {suggestions.map((item) => (
-              <Pressable
-                key={item.id}
-                onPress={() => {
-                  setSearchQuery(`${item.brand} ${item.name}`);
-                  setShowSuggestions(false);
-                }}
-                style={[styles.suggestionRow, { borderBottomColor: themeColors.border }]}
-              >
-                <Search color={themeColors.textSecondary} size={14} style={styles.suggestionIcon} />
-                <Text numberOfLines={1} style={[styles.suggestionText, { color: themeColors.text }]}>
-                  <Text style={{ fontWeight: '800', color: themeColors.primary }}>{item.brand}</Text> {item.name}
-                </Text>
-              </Pressable>
-            ))}
+            {suggestions.map((item) => {
+              let icon = <Search color={themeColors.textSecondary} size={14} style={styles.suggestionIcon} />;
+              let subtitle = '';
+
+              if (item.type === 'brand') {
+                icon = <Sparkles color={themeColors.primary} size={14} style={styles.suggestionIcon} />;
+                subtitle = 'Markayı Filtrele';
+              } else if (item.type === 'category') {
+                const catInfo = CATEGORIES.find(c => c.id === item.categoryId);
+                icon = getCategoryIcon(catInfo?.icon || 'sparkles', themeColors.primary, 14);
+                subtitle = 'Kategoriyi Filtrele';
+              } else if (item.type === 'brand_category') {
+                const catInfo = CATEGORIES.find(c => c.id === item.categoryId);
+                icon = getCategoryIcon(catInfo?.icon || 'sparkles', themeColors.primary, 14);
+                subtitle = 'Marka + Kategori Filtrele';
+              } else if (item.type === 'product' && item.product) {
+                icon = (
+                  <Image 
+                    source={{ uri: item.product.image }} 
+                    style={styles.suggestionThumbnail} 
+                  />
+                );
+                subtitle = `${item.product.brand} Ürünü`;
+              }
+
+              return (
+                <Pressable
+                  key={item.id}
+                  onPress={() => handleSuggestionSelect(item)}
+                  style={[styles.suggestionRow, { borderBottomColor: themeColors.border }]}
+                >
+                  <View style={styles.suggestionIconWrapper}>
+                    {icon}
+                  </View>
+                  <View style={styles.suggestionTextContainer}>
+                    <Text numberOfLines={1} style={[styles.suggestionText, { color: themeColors.text }]}>
+                      {item.label}
+                    </Text>
+                    {subtitle ? (
+                      <Text style={[styles.suggestionSubtitle, { color: themeColors.textSecondary }]}>
+                        {subtitle}
+                      </Text>
+                    ) : null}
+                  </View>
+                </Pressable>
+              );
+            })}
           </ScrollView>
         </View>
       )}
@@ -242,16 +407,24 @@ export default function HomeScreen() {
           contentContainerStyle={styles.categoriesContainer}
         >
           {CATEGORIES.map((cat) => {
+            const count = categoryCounts[cat.id] || 0;
             const isSelected = selectedCategory === cat.id;
+            const isDisabled = count === 0 && cat.id !== 'all';
+
             return (
               <Pressable
                 key={cat.id}
-                onPress={() => setSelectedCategory(cat.id)}
+                onPress={() => {
+                  if (isDisabled) return;
+                  setSelectedCategory(cat.id);
+                }}
+                disabled={isDisabled}
                 style={[
                   styles.categoryBadge,
                   { 
                     backgroundColor: isSelected ? themeColors.primary : themeColors.backgroundElement,
-                    borderColor: isSelected ? themeColors.primary : themeColors.border
+                    borderColor: isSelected ? themeColors.primary : themeColors.border,
+                    opacity: isDisabled ? 0.35 : 1,
                   }
                 ]}
               >
@@ -262,7 +435,7 @@ export default function HomeScreen() {
                     { color: isSelected ? '#FFF' : themeColors.text, fontWeight: isSelected ? '700' : '500' }
                   ]}
                 >
-                  {cat.name}
+                  {cat.name} ({count})
                 </Text>
               </Pressable>
             );
@@ -279,16 +452,24 @@ export default function HomeScreen() {
           contentContainerStyle={styles.brandsContainer}
         >
           {POPULAR_BRANDS_LIST.map((brandName) => {
+            const count = brandCounts[brandName] || 0;
             const isSelected = selectedBrand === brandName;
+            const isDisabled = count === 0;
+
             return (
               <Pressable
                 key={brandName}
-                onPress={() => setSelectedBrand(isSelected ? null : brandName)}
+                onPress={() => {
+                  if (isDisabled) return;
+                  setSelectedBrand(isSelected ? null : brandName);
+                }}
+                disabled={isDisabled}
                 style={[
                   styles.brandBadge,
                   { 
                     backgroundColor: isSelected ? themeColors.primary : themeColors.backgroundElement,
-                    borderColor: isSelected ? themeColors.primary : themeColors.border
+                    borderColor: isSelected ? themeColors.primary : themeColors.border,
+                    opacity: isDisabled ? 0.35 : 1,
                   }
                 ]}
               >
@@ -298,13 +479,121 @@ export default function HomeScreen() {
                     { color: isSelected ? '#FFF' : themeColors.text, fontWeight: isSelected ? '700' : '500' }
                   ]}
                 >
-                  {brandName}
+                  {brandName} ({count})
                 </Text>
               </Pressable>
             );
           })}
         </ScrollView>
       </View>
+
+      {/* Brand Focus Category Selector */}
+      {selectedBrand && (
+        <View style={[styles.brandFocusContainer, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}>
+          <View style={styles.brandFocusHeader}>
+            <View style={styles.brandFocusTitleRow}>
+              <Sparkles color={themeColors.primary} size={16} />
+              <Text style={[styles.brandFocusTitle, { color: themeColors.text }]}>
+                {selectedBrand} Ürünlerini Filtrele
+              </Text>
+            </View>
+            <Pressable 
+              onPress={() => setSelectedBrand(null)} 
+              style={[styles.brandFocusClose, { backgroundColor: themeColors.backgroundSelected }]}
+            >
+              <X color={themeColors.text} size={14} />
+            </Pressable>
+          </View>
+          <Text style={[styles.brandFocusSubtitle, { color: themeColors.textSecondary }]}>
+            Bu markaya ait kategorileri seçerek aramanızı daraltın:
+          </Text>
+          
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.brandFocusCategories}
+          >
+            {CATEGORIES.map((cat) => {
+              const count = categoryCounts[cat.id] || 0;
+              const isSelected = selectedCategory === cat.id;
+              if (count === 0 && cat.id !== 'all') return null;
+
+              return (
+                <Pressable
+                  key={cat.id}
+                  onPress={() => {
+                    setSelectedCategory(cat.id);
+                  }}
+                  style={[
+                    styles.brandFocusCategoryBadge,
+                    { 
+                      backgroundColor: isSelected ? themeColors.primary : themeColors.background,
+                      borderColor: isSelected ? themeColors.primary : themeColors.border,
+                    }
+                  ]}
+                >
+                  {getCategoryIcon(cat.icon, isSelected ? '#FFF' : themeColors.textSecondary, 14)}
+                  <Text 
+                    style={[
+                      styles.brandFocusCategoryLabel, 
+                      { color: isSelected ? '#FFF' : themeColors.text, fontWeight: isSelected ? '700' : '500' }
+                    ]}
+                  >
+                    {cat.name} ({count})
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* Active Filters Row */}
+      {(selectedBrand || selectedCategory !== 'all' || searchQuery) ? (
+        <View style={styles.activeFiltersRow}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.activeFiltersContainer}>
+            <Text style={[styles.filterLabelText, { color: themeColors.textSecondary }]}>Aktif Filtreler:</Text>
+            {searchQuery ? (
+              <Pressable 
+                onPress={() => setSearchQuery('')}
+                style={[styles.filterTag, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}
+              >
+                <Text style={[styles.filterTagText, { color: themeColors.text }]}>Ara: "{searchQuery}"</Text>
+                <X color={themeColors.textSecondary} size={12} />
+              </Pressable>
+            ) : null}
+            {selectedCategory !== 'all' ? (
+              <Pressable 
+                onPress={() => setSelectedCategory('all')}
+                style={[styles.filterTag, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}
+              >
+                <Text style={[styles.filterTagText, { color: themeColors.text }]}>Kategori: {CATEGORIES.find(c => c.id === selectedCategory)?.name}</Text>
+                <X color={themeColors.textSecondary} size={12} />
+              </Pressable>
+            ) : null}
+            {selectedBrand ? (
+              <Pressable 
+                onPress={() => setSelectedBrand(null)}
+                style={[styles.filterTag, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}
+              >
+                <Text style={[styles.filterTagText, { color: themeColors.text }]}>Marka: {selectedBrand}</Text>
+                <X color={themeColors.textSecondary} size={12} />
+              </Pressable>
+            ) : null}
+            
+            <Pressable 
+              onPress={() => {
+                setSearchQuery('');
+                setSelectedCategory('all');
+                setSelectedBrand(null);
+              }}
+              style={styles.clearAllBtn}
+            >
+              <Text style={[styles.clearAllText, { color: themeColors.primary }]}>Temizle</Text>
+            </Pressable>
+          </ScrollView>
+        </View>
+      ) : null}
 
       {/* Products Grid */}
       <FlatList
@@ -876,5 +1165,122 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginHorizontal: Spacing.three,
     marginBottom: Spacing.two,
+  },
+  activeFiltersRow: {
+    paddingHorizontal: Spacing.three,
+    marginVertical: Spacing.one,
+    zIndex: 5,
+  },
+  activeFiltersContainer: {
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  filterLabelText: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginRight: Spacing.one,
+    textTransform: 'uppercase',
+  },
+  filterTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: Spacing.two + 2,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: Spacing.one + 2,
+  },
+  filterTagText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  clearAllBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: Spacing.two,
+  },
+  clearAllText: {
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  brandFocusContainer: {
+    marginHorizontal: Spacing.three,
+    marginVertical: Spacing.one,
+    padding: Spacing.three,
+    borderRadius: 16,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 1,
+  },
+  brandFocusHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.one,
+  },
+  brandFocusTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one + 2,
+  },
+  brandFocusTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  brandFocusClose: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  brandFocusSubtitle: {
+    fontSize: 11,
+    marginBottom: Spacing.two,
+  },
+  brandFocusCategories: {
+    gap: Spacing.two,
+    paddingVertical: 2,
+  },
+  brandFocusCategoryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Spacing.one + 2,
+    paddingHorizontal: Spacing.three - 2,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: Spacing.one + 2,
+  },
+  brandFocusCategoryLabel: {
+    fontSize: 12,
+  },
+  suggestionThumbnail: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    resizeMode: 'cover',
+  },
+  suggestionIconWrapper: {
+    width: 28,
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.two,
+  },
+  suggestionTextContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  suggestionSubtitle: {
+    fontSize: 9,
+    marginTop: 1,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
 });
