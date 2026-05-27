@@ -35,6 +35,7 @@ import {
 import { Colors, Spacing, BottomTabInset } from '@/constants/theme';
 import { searchAndSimulateProducts, CATEGORIES, Product, getCategoryImage } from '@/constants/mockData';
 import { useWishlist } from '@/context/WishlistContext';
+import packageJson from '../../package.json';
 
 const POPULAR_BRANDS_LIST = [
   'Maybelline',
@@ -735,6 +736,13 @@ export default function HomeScreen() {
             </View>
           );
         }}
+        ListFooterComponent={
+          <View style={styles.footerContainer}>
+            <Text style={[styles.footerText, { color: themeColors.textSecondary }]}>
+              GlowPrice ✨ v{packageJson.version}
+            </Text>
+          </View>
+        }
       />
 
       {/* Custom Product Creator Modal */}
@@ -1305,5 +1313,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.3,
+  },
+  footerContainer: {
+    paddingTop: Spacing.four,
+    paddingBottom: Spacing.six,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  footerText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    opacity: 0.8,
   },
 });
