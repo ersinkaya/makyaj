@@ -45,344 +45,524 @@ export const STORE_NAMES: Record<keyof StorePrices, string> = {
 };
 
 // Gerçek popüler makyaj ve bakım ürünleri veritabanı
-export const INITIAL_PRODUCTS: Product[] = [
-  // MASKARALAR (RİMELLER)
-  {
-    id: 'm1',
-    name: 'Lash Sensational Yelpaze Etkili Maskara',
-    brand: 'Maybelline New York',
-    category: 'rimel',
-    image: 'https://images.unsplash.com/photo-1631214524020-7e18db9a8f92?q=80&w=300&auto=format&fit=crop',
-    rating: 4.8,
-    reviewsCount: 15420,
-    prices: {
-      gratis: 349.90,
-      watsons: 369.90,
-      rossmann: 355.00,
-      eve: 339.90,
-      sephora: null,
-      trendyol: 319.00,
-      hepsiburada: 325.00,
-    },
-    description: 'Tek tek ayrılmış, yoğun ve dolgun kirpikler için yelpaze etkili efsanevi maskara.',
-  },
-  {
-    id: 'm2',
-    name: 'Sky High Maskara Very Black',
-    brand: 'Maybelline New York',
-    category: 'rimel',
-    image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?q=80&w=300&auto=format&fit=crop',
-    rating: 4.7,
-    reviewsCount: 9850,
-    prices: {
-      gratis: 419.90,
-      watsons: 399.90,
-      rossmann: 405.00,
-      eve: 389.90,
-      sephora: null,
-      trendyol: 375.00,
-      hepsiburada: 379.00,
-    },
-    description: 'Sonsuz uzunluk ve hacim etkisi veren, bambu özü içeren esnek fırçalı maskara.',
-  },
-  {
-    id: 'm3',
-    name: 'I Love Extreme Volume Maskara Crazy Volume',
-    brand: 'Essence',
-    category: 'rimel',
-    image: 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?q=80&w=300&auto=format&fit=crop',
-    rating: 4.5,
-    reviewsCount: 2240,
-    prices: {
-      gratis: 189.90,
-      watsons: 199.90,
-      rossmann: 185.00,
-      eve: 179.90,
-      sephora: null,
-      trendyol: 165.00,
-      hepsiburada: 169.00,
-    },
-    description: 'Ultra siyah pigmentli yapısıyla kirpiklerinize çılgın hacim kazandıran büyük elastomer fırçalı maskara.',
-  },
+function generateMassiveProducts(): Product[] {
+  const brands = [
+    'Maybelline New York', 'L\'Oreal Paris', 'NYX Professional Makeup', 'Pastel', 
+    'Flormar', 'Golden Rose', 'Kiko Milano', 'Mac', 'Sephora Collection', 
+    'Clinique', 'Dior', 'NARS', 'The Ordinary', 'Yves Rocher', 'Estee Lauder', 
+    'Lancome', 'Shiseido', 'Revolution', 'Wet n Wild', 'Essence', 'Benefit Cosmetics',
+    'Fenty Beauty', 'Charlotte Tilbury', 'Too Faced', 'Huda Beauty', 'Bobbi Brown',
+    'Anastasia Beverly Hills', 'Urban Decay', 'Clarins', 'Note Cosmetique', 'Beaulis',
+    'Mara Cosmetics', 'Gabrini', 'Farmasi', 'Kryolan', 'L\'Occitane'
+  ];
 
-  // RUJLAR & DUDAK ÜRÜNLERİ
-  {
-    id: 'r1',
-    name: 'Super Stay Matte Ink Likit Mat Ruj (Seductress 65)',
-    brand: 'Maybelline New York',
-    category: 'ruj',
-    image: 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?q=80&w=300&auto=format&fit=crop',
-    rating: 4.6,
-    reviewsCount: 8430,
-    prices: {
-      gratis: 329.90,
-      watsons: 319.90,
-      rossmann: 325.00,
-      eve: 299.90,
-      sephora: null,
-      trendyol: 285.00,
-      hepsiburada: 289.00,
+  const categories = [
+    { 
+      id: 'ruj', 
+      name: 'Ruj & Dudak', 
+      prefix: [
+        'Super Stay Likit Mat Ruj', 
+        'Matte Lipstick Dudak Ruju', 
+        'Lifter Gloss Dudak Parlatıcısı', 
+        'Shine Lip Plumper Dolgunlaştırıcı', 
+        'Waterproof Dudak Kalemi', 
+        'Hydrating Lip Balm Nemlendirici',
+        'Velvet Matte Lip Cream Ruj',
+        'Nourishing Lip Oil Dudak Yağı'
+      ] 
     },
-    description: '16 saate kadar kalıcı, dudakta kuruma yapmayan süper mat bitişli likit ruj.',
-  },
-  {
-    id: 'r2',
-    name: 'Almost Lipstick Dudak Parlatıcısı (Black Honey)',
-    brand: 'Clinique',
-    category: 'ruj',
-    image: 'https://images.unsplash.com/photo-1617897903246-719242758050?q=80&w=300&auto=format&fit=crop',
-    rating: 4.9,
-    reviewsCount: 1870,
-    prices: {
-      gratis: null,
-      watsons: 850.00,
-      rossmann: 850.00,
-      eve: null,
-      sephora: 920.00,
-      trendyol: 810.00,
-      hepsiburada: 825.00,
+    { 
+      id: 'rimel', 
+      name: 'Rimel & Maskara', 
+      prefix: [
+        'Lash Sensational Yelpaze Etkili Maskara', 
+        'Sky High Uzunluk Veren Maskara', 
+        'Crazy Volume Ekstra Hacimli Rimel', 
+        'Waterproof 24h Dayanıklı Rimel', 
+        'Curling Lift Kıvırıcı Fırçalı Maskara',
+        'False Lash Efsanevi Dolgunluk Rimeli',
+        'Defining Fiber Uzatan Maskara',
+        'Volume Express Klasik Siyah Rimel'
+      ] 
     },
-    description: 'Her dudak renginde farklı ve doğal duran, kült ve yarı şeffaf efsanevi dudak nemlendiricisi.',
-  },
-  {
-    id: 'r3',
-    name: 'Dior Addict Lip Glow Oil (Cherry 015)',
-    brand: 'Dior',
-    category: 'ruj',
-    image: 'https://images.unsplash.com/photo-1591348278863-a8fb3887e2ac?q=80&w=300&auto=format&fit=crop',
-    rating: 4.9,
-    reviewsCount: 650,
-    prices: {
-      gratis: null,
-      watsons: null,
-      rossmann: null,
-      eve: null,
-      sephora: 1850.00,
-      trendyol: 1950.00,
-      hepsiburada: 1920.00,
+    { 
+      id: 'kalem', 
+      name: 'Göz & Eyeliner', 
+      prefix: [
+        'Epic Ink Suya Dayanıklı Eyeliner', 
+        'Kohl Kajal Yumuşak Siyah Göz Kalemi', 
+        'Waterproof Gel Eyeliner Siyah', 
+        'Precision Liquid Dipliner Mat', 
+        'Asansörlü Definer Göz Kalemi',
+        'Metallic Shimmer Renkli Göz Kalemi',
+        'Epic Wear Yarı Kalıcı Eyeliner',
+        'Super Matte Kalem Eyeliner'
+      ] 
     },
-    description: 'Dudakların doğal rengini ortaya çıkaran ve yoğun parlaklık sağlayan besleyici dudak yağı.',
-  },
-  {
-    id: 'r4',
-    name: 'Show By Pastel Show Your Game Likit Mat Ruj',
-    brand: 'Pastel',
-    category: 'ruj',
-    image: 'https://images.unsplash.com/photo-1571781926291-c477ebfd024b?q=80&w=300&auto=format&fit=crop',
-    rating: 4.4,
-    reviewsCount: 3120,
-    prices: {
-      gratis: 149.90,
-      watsons: 159.90,
-      rossmann: 145.00,
-      eve: 139.90,
-      sephora: null,
-      trendyol: 124.00,
-      hepsiburada: 129.00,
+    { 
+      id: 'allik', 
+      name: 'Allık & Ten', 
+      prefix: [
+        'Fit Me Luminous Kadife Toz Allık', 
+        'Liquid Blush Doğal Likit Allık', 
+        'Sweet Cheeks Kremsi Allık', 
+        'Baked Terracotta Işıltılı Allık', 
+        'Matte Poreless Kapatıcı Fondöten',
+        'Radiant Lifting Islak Bitişli Fondöten',
+        'Super Stay Full Coverage Kapatıcı',
+        'Luminous Matte Sıkıştırılmış Pudra'
+      ] 
     },
-    description: 'Hafif formülü ile gün boyu kurutmadan matlık sağlayan kadifemsi ruj.',
-  },
+    { 
+      id: 'far', 
+      name: 'Far Paleti', 
+      prefix: [
+        'Nudes Palette 12 Renkli Göz Farı', 
+        'Burgundy Warm Tonlar Sıcak Far Paleti', 
+        'Ultimate Shadow Profesyonel Far Paleti', 
+        'Single Chrome Işıltılı Tekli Far', 
+        'Smoky Eye 6 Renkli Far Paleti',
+        'Matte & Shimmer Pigmentli Göz Farı',
+        'Desert Sunset 16 Renkli Far Paleti',
+        'Glitter Pigment Toz Far'
+      ] 
+    },
+    { 
+      id: 'oje', 
+      name: 'Oje & El', 
+      prefix: [
+        'Nail Enamel Uzun Süre Kalıcı Oje', 
+        'Full Color Tek Katta Kapatıcı Oje', 
+        'Quick Dry Hızlı Kuruyan Parlak Oje', 
+        'Pure Color Bitkisel Formüllü Oje', 
+        'Gel Shine Jel Bitişli Kalıcı Oje',
+        'Matte Effect Kadifemsi Mat Oje',
+        'Nail Care Güçlendirici Tırnak Bakım Ojesi',
+        'Glitter Party Simli Tırnak Ojesi'
+      ] 
+    },
+    { 
+      id: 'cilt', 
+      name: 'Cilt Bakım', 
+      prefix: [
+        'Hyaluronic Acid %2 + B5 Yoğun Nemlendirici', 
+        'Glikolik Asit %7 Aydınlatıcı Tonik', 
+        'Niacinamide %10 Gözenek Sıkılaştırıcı Serum', 
+        'Vitamin C Günlük Işıltı Yüz Kremi', 
+        'Salicylic Acid %2 Akne Karşıtı Jel', 
+        'Retinol %1 Kırışıklık Karşıtı Gece Serumu',
+        'Centella Asiatica Yatıştırıcı Bariyer Krem',
+        'Moisturizing Ceramide Günlük Nemlendirici'
+      ] 
+    }
+  ];
 
-  // ALLIK & TEN ÜRÜNLERİ
-  {
-    id: 'a1',
-    name: 'Fit Me Luminous Matte Allık (Rose 25)',
-    brand: 'Maybelline New York',
-    category: 'allik',
-    image: 'https://images.unsplash.com/photo-1631214524020-7e18db9a8f92?q=80&w=300&auto=format&fit=crop',
-    rating: 4.5,
-    reviewsCount: 4120,
-    prices: {
-      gratis: 279.90,
-      watsons: 289.90,
-      rossmann: 275.00,
-      eve: 269.90,
-      sephora: null,
-      trendyol: 245.00,
-      hepsiburada: 249.00,
-    },
-    description: 'Cilde doğal renk ve taze bir ışıltı veren, gün boyu kalıcı mat allık.',
-  },
-  {
-    id: 'a2',
-    name: 'Sweet Cheeks Creamy Powder Blush (Rose & Play)',
-    brand: 'NYX Professional Makeup',
-    category: 'allik',
-    image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?q=80&w=300&auto=format&fit=crop',
-    rating: 4.7,
-    reviewsCount: 1280,
-    prices: {
-      gratis: 369.90,
-      watsons: 379.90,
-      rossmann: 365.00,
-      eve: 359.90,
-      sephora: null,
-      trendyol: 339.00,
-      hepsiburada: 345.00,
-    },
-    description: 'Kadifemsi mat bitişe sahip, yüksek pigmentli krem-toz yapıda allık.',
-  },
-  {
-    id: 'a3',
-    name: 'Liquid Blush Likit Allık (Orgasm)',
-    brand: 'NARS',
-    category: 'allik',
-    image: 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?q=80&w=300&auto=format&fit=crop',
-    rating: 4.8,
-    reviewsCount: 780,
-    prices: {
-      gratis: null,
-      watsons: null,
-      rossmann: null,
-      eve: null,
-      sephora: 1550.00,
-      trendyol: 1650.00,
-      hepsiburada: 1620.00,
-    },
-    description: 'Cilde anında doğal pembe-şeftali ışıltı ve taze bir görünüm kazandıran likit allık.',
-  },
+  const shades = [
+    'No: 01 Light / Nude', 'No: 02 Pink / Gül Kurusu', 'No: 03 Peach / Şeftali', 
+    'No: 04 Red / Klasik Kırmızı', 'No: 05 Plum / Mürdüm', 'No: 06 Coral / Mercan',
+    'No: 101 Şeffaf / Natural', 'No: 102 Dark / Kahve', 'No: 103 Gold Glitter',
+    'No: 104 Very Black', 'No: 12 Warm Sand', 'No: 24 Ivory Rose', 'No: 88 Cherry Red',
+    'No: 99 Deep Berry', 'No: 200 Ultra Matte'
+  ];
 
-  // GÖZ KALEMİ & EYELINER
-  {
-    id: 'k1',
-    name: 'Göz Kalemi Siyah (Waterproof 101)',
-    brand: 'Flormar',
-    category: 'kalem',
-    image: 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?q=80&w=300&auto=format&fit=crop',
-    rating: 4.6,
-    reviewsCount: 5690,
-    prices: {
-      gratis: 119.90,
-      watsons: 129.90,
-      rossmann: 119.90,
-      eve: 109.90,
-      sephora: null,
-      trendyol: 99.00,
-      hepsiburada: 102.00,
-    },
-    description: 'Suya dayanıklı, akmayan, gün boyu gözlerde keskin siyahlık sağlayan göz kalemi.',
-  },
-  {
-    id: 'k2',
-    name: 'Epic Ink Liner Black',
-    brand: 'NYX Professional Makeup',
-    category: 'kalem',
-    image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?q=80&w=300&auto=format&fit=crop',
-    rating: 4.7,
-    reviewsCount: 6540,
-    prices: {
-      gratis: 429.90,
-      watsons: 449.90,
-      rossmann: 435.00,
-      eve: 419.90,
-      sephora: null,
-      trendyol: 395.00,
-      hepsiburada: 399.00,
-    },
-    description: 'Keskin ve belirgin çizgiler çekmenizi kolaylaştıran, suya dayanıklı fırça uçlu likit eyeliner.',
-  },
+  const list: Product[] = [];
 
-  // OJELER
-  {
-    id: 'o1',
-    name: 'Nail Enamel Parlak Oje (454 Cherry Dessert)',
-    brand: 'Flormar',
-    category: 'oje',
-    image: 'https://images.unsplash.com/photo-1604654894610-df4906b1126a?q=80&w=300&auto=format&fit=crop',
-    rating: 4.6,
-    reviewsCount: 3120,
-    prices: {
-      gratis: 64.90,
-      watsons: 69.90,
-      rossmann: 64.90,
-      eve: 59.90,
-      sephora: null,
-      trendyol: 49.00,
-      hepsiburada: 52.00,
+  // Handcrafted iconic products to keep database authentic
+  const handcrafted: Product[] = [
+    {
+      id: 'm1',
+      name: 'Lash Sensational Yelpaze Etkili Maskara',
+      brand: 'Maybelline New York',
+      category: 'rimel',
+      image: 'https://images.unsplash.com/photo-1631214524020-7e18db9a8f92?q=80&w=300&auto=format&fit=crop',
+      rating: 4.8,
+      reviewsCount: 15420,
+      prices: {
+        gratis: 349.90,
+        watsons: 369.90,
+        rossmann: 355.00,
+        eve: 339.90,
+        sephora: null,
+        trendyol: 319.00,
+        hepsiburada: 325.00,
+      },
+      description: 'Tek tek ayrılmış, yoğun ve dolgun kirpikler için yelpaze etkili efsanevi maskara.',
     },
-    description: 'Yüksek kapatıcılık ve parlaklık sunan, uzun süre soyulmayan klasik Flormar ojesi.',
-  },
-  {
-    id: 'o2',
-    name: 'Pure Nail Color Bitkisel Oje',
-    brand: 'Yves Rocher',
-    category: 'oje',
-    image: 'https://images.unsplash.com/photo-1519014816548-bf5fe059798b?q=80&w=300&auto=format&fit=crop',
-    rating: 4.5,
-    reviewsCount: 890,
-    prices: {
-      gratis: null,
-      watsons: null,
-      rossmann: 180.00,
-      eve: null,
-      sephora: null,
-      trendyol: 170.00,
-      hepsiburada: 175.00,
+    {
+      id: 'm2',
+      name: 'Sky High Maskara Very Black',
+      brand: 'Maybelline New York',
+      category: 'rimel',
+      image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?q=80&w=300&auto=format&fit=crop',
+      rating: 4.7,
+      reviewsCount: 9850,
+      prices: {
+        gratis: 419.90,
+        watsons: 399.90,
+        rossmann: 405.00,
+        eve: 389.90,
+        sephora: null,
+        trendyol: 375.00,
+        hepsiburada: 379.00,
+      },
+      description: 'Sonsuz uzunluk ve hacim etkisi veren, bambu özü içeren esnek fırçalı maskara.',
     },
-    description: 'Hindistan cevizi yağı ve bambu özüyle zenginleştirilmiş bitkisel formüllü oje.',
-  },
+    {
+      id: 'm3',
+      name: 'I Love Extreme Volume Maskara Crazy Volume',
+      brand: 'Essence',
+      category: 'rimel',
+      image: 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?q=80&w=300&auto=format&fit=crop',
+      rating: 4.5,
+      reviewsCount: 2240,
+      prices: {
+        gratis: 189.90,
+        watsons: 199.90,
+        rossmann: 185.00,
+        eve: 179.90,
+        sephora: null,
+        trendyol: 165.00,
+        hepsiburada: 169.00,
+      },
+      description: 'Ultra siyah pigmentli yapısıyla kirpiklerinize çılgın hacim kazandıran büyük elastomer fırçalı maskara.',
+    },
+    {
+      id: 'r1',
+      name: 'Super Stay Matte Ink Likit Mat Ruj (Seductress 65)',
+      brand: 'Maybelline New York',
+      category: 'ruj',
+      image: 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?q=80&w=300&auto=format&fit=crop',
+      rating: 4.6,
+      reviewsCount: 8430,
+      prices: {
+        gratis: 329.90,
+        watsons: 319.90,
+        rossmann: 325.00,
+        eve: 299.90,
+        sephora: null,
+        trendyol: 285.00,
+        hepsiburada: 289.00,
+      },
+      description: '16 saate kadar kalıcı, dudakta kuruma yapmayan süper mat bitişli likit ruj.',
+    },
+    {
+      id: 'r2',
+      name: 'Almost Lipstick Dudak Parlatıcısı (Black Honey)',
+      brand: 'Clinique',
+      category: 'ruj',
+      image: 'https://images.unsplash.com/photo-1617897903246-719242758050?q=80&w=300&auto=format&fit=crop',
+      rating: 4.9,
+      reviewsCount: 1870,
+      prices: {
+        gratis: null,
+        watsons: 850.00,
+        rossmann: 850.00,
+        eve: null,
+        sephora: 920.00,
+        trendyol: 810.00,
+        hepsiburada: 825.00,
+      },
+      description: 'Her dudak renginde farklı ve doğal duran, kült ve yarı şeffaf efsanevi dudak nemlendiricisi.',
+    },
+    {
+      id: 'r3',
+      name: 'Dior Addict Lip Glow Oil (Cherry 015)',
+      brand: 'Dior',
+      category: 'ruj',
+      image: 'https://images.unsplash.com/photo-1591348278863-a8fb3887e2ac?q=80&w=300&auto=format&fit=crop',
+      rating: 4.9,
+      reviewsCount: 650,
+      prices: {
+        gratis: null,
+        watsons: null,
+        rossmann: null,
+        eve: null,
+        sephora: 1850.00,
+        trendyol: 1950.00,
+        hepsiburada: 1920.00,
+      },
+      description: 'Dudakların doğal rengini ortaya çıkaran ve yoğun parlaklık sağlayan besleyici dudak yağı.',
+    },
+    {
+      id: 'r4',
+      name: 'Show By Pastel Show Your Game Likit Mat Ruj',
+      brand: 'Pastel',
+      category: 'ruj',
+      image: 'https://images.unsplash.com/photo-1571781926291-c477ebfd024b?q=80&w=300&auto=format&fit=crop',
+      rating: 4.4,
+      reviewsCount: 3120,
+      prices: {
+        gratis: 149.90,
+        watsons: 159.90,
+        rossmann: 145.00,
+        eve: 139.90,
+        sephora: null,
+        trendyol: 124.00,
+        hepsiburada: 129.00,
+      },
+      description: 'Hafif formülü ile gün boyu kurutmadan matlık sağlayan kadifemsi ruj.',
+    },
+    {
+      id: 'a1',
+      name: 'Fit Me Luminous Matte Allık (Rose 25)',
+      brand: 'Maybelline New York',
+      category: 'allik',
+      image: 'https://images.unsplash.com/photo-1631214524020-7e18db9a8f92?q=80&w=300&auto=format&fit=crop',
+      rating: 4.5,
+      reviewsCount: 4120,
+      prices: {
+        gratis: 279.90,
+        watsons: 289.90,
+        rossmann: 275.00,
+        eve: 269.90,
+        sephora: null,
+        trendyol: 245.00,
+        hepsiburada: 249.00,
+      },
+      description: 'Cilde doğal renk ve taze bir ışıltı veren, gün boyu kalıcı mat allık.',
+    },
+    {
+      id: 'a2',
+      name: 'Sweet Cheeks Creamy Powder Blush (Rose & Play)',
+      brand: 'NYX Professional Makeup',
+      category: 'allik',
+      image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?q=80&w=300&auto=format&fit=crop',
+      rating: 4.7,
+      reviewsCount: 1280,
+      prices: {
+        gratis: 369.90,
+        watsons: 379.90,
+        rossmann: 365.00,
+        eve: 359.90,
+        sephora: null,
+        trendyol: 339.00,
+        hepsiburada: 345.00,
+      },
+      description: 'Kadifemsi mat bitişe sahip, yüksek pigmentli krem-toz yapıda allık.',
+    },
+    {
+      id: 'a3',
+      name: 'Liquid Blush Likit Allık (Orgasm)',
+      brand: 'NARS',
+      category: 'allik',
+      image: 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?q=80&w=300&auto=format&fit=crop',
+      rating: 4.8,
+      reviewsCount: 780,
+      prices: {
+        gratis: null,
+        watsons: null,
+        rossmann: null,
+        eve: null,
+        sephora: 1550.00,
+        trendyol: 1650.00,
+        hepsiburada: 1620.00,
+      },
+      description: 'Cilde anında doğal pembe-şeftali ışıltı ve taze bir görünüm kazandıran likit allık.',
+    },
+    {
+      id: 'k1',
+      name: 'Göz Kalemi Siyah (Waterproof 101)',
+      brand: 'Flormar',
+      category: 'kalem',
+      image: 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?q=80&w=300&auto=format&fit=crop',
+      rating: 4.6,
+      reviewsCount: 5690,
+      prices: {
+        gratis: 119.90,
+        watsons: 129.90,
+        rossmann: 119.90,
+        eve: 109.90,
+        sephora: null,
+        trendyol: 99.00,
+        hepsiburada: 102.00,
+      },
+      description: 'Suya dayanıklı, akmayan, gün boyu gözlerde keskin siyahlık sağlayan göz kalemi.',
+    },
+    {
+      id: 'k2',
+      name: 'Epic Ink Liner Black',
+      brand: 'NYX Professional Makeup',
+      category: 'kalem',
+      image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?q=80&w=300&auto=format&fit=crop',
+      rating: 4.7,
+      reviewsCount: 6540,
+      prices: {
+        gratis: 429.90,
+        watsons: 449.90,
+        rossmann: 435.00,
+        eve: 419.90,
+        sephora: null,
+        trendyol: 395.00,
+        hepsiburada: 399.00,
+      },
+      description: 'Keskin ve belirgin çizgiler çekmenizi kolaylaştıran, suya dayanıklı fırça uçlu likit eyeliner.',
+    },
+    {
+      id: 'o1',
+      name: 'Nail Enamel Parlak Oje (454 Cherry Dessert)',
+      brand: 'Flormar',
+      category: 'oje',
+      image: 'https://images.unsplash.com/photo-1604654894610-df4906b1126a?q=80&w=300&auto=format&fit=crop',
+      rating: 4.6,
+      reviewsCount: 3120,
+      prices: {
+        gratis: 64.90,
+        watsons: 69.90,
+        rossmann: 64.90,
+        eve: 59.90,
+        sephora: null,
+        trendyol: 49.00,
+        hepsiburada: 52.00,
+      },
+      description: 'Yüksek kapatıcılık ve parlaklık sunan, uzun süre soyulmayan klasik Flormar ojesi.',
+    },
+    {
+      id: 'o2',
+      name: 'Pure Nail Color Bitkisel Oje',
+      brand: 'Yves Rocher',
+      category: 'oje',
+      image: 'https://images.unsplash.com/photo-1519014816548-bf5fe059798b?q=80&w=300&auto=format&fit=crop',
+      rating: 4.5,
+      reviewsCount: 890,
+      prices: {
+        gratis: null,
+        watsons: null,
+        rossmann: 180.00,
+        eve: null,
+        sephora: null,
+        trendyol: 170.00,
+        hepsiburada: 175.00,
+      },
+      description: 'Hindistan cevizi yağı ve bambu özüyle zenginleştirilmiş bitkisel formüllü oje.',
+    },
+    {
+      id: 'f1',
+      name: 'Nudes Of New York Far Paleti',
+      brand: 'Maybelline New York',
+      category: 'far',
+      image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?q=80&w=300&auto=format&fit=crop',
+      rating: 4.7,
+      reviewsCount: 3450,
+      prices: {
+        gratis: 589.90,
+        watsons: 599.90,
+        rossmann: 585.00,
+        eve: 569.90,
+        sephora: null,
+        trendyol: 519.00,
+        hepsiburada: 525.00,
+      },
+      description: '16 krem yapılı, nude ve sıcak tonlarda mat/ışıltılı renkler içeren göz farı paleti.',
+    },
+    {
+      id: 'c1',
+      name: 'Hyaluronic Acid 2% + B5 Nemlendirici Serum',
+      brand: 'The Ordinary',
+      category: 'cilt',
+      image: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?q=80&w=300&auto=format&fit=crop',
+      rating: 4.7,
+      reviewsCount: 7120,
+      prices: {
+        gratis: null,
+        watsons: null,
+        rossmann: 520.00,
+        eve: null,
+        sephora: 590.00,
+        trendyol: 460.00,
+        hepsiburada: 475.00,
+      },
+      description: 'Cildin farklı katmanlarını yoğun şekilde nemlendiren, pürüzsüzleştiren hyalüronik asit serumu.',
+    },
+    {
+      id: 'c2',
+      name: 'Glikolik Asit %7 Gözenek Sıkılaştırıcı Tonik',
+      brand: 'The Ordinary',
+      category: 'cilt',
+      image: 'https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?q=80&w=300&auto=format&fit=crop',
+      rating: 4.6,
+      reviewsCount: 5410,
+      prices: {
+        gratis: null,
+        watsons: null,
+        rossmann: 650.00,
+        eve: null,
+        sephora: 720.00,
+        trendyol: 590.00,
+        hepsiburada: 610.00,
+      },
+      description: 'Cildi nazikçe eksfoliye eden, cilt tonunu eşitleyen ve parlaklık veren glikolik asit toniği.',
+    },
+  ];
 
-  // FAR PALETLERİ
-  {
-    id: 'f1',
-    name: 'Nudes Of New York Far Paleti',
-    brand: 'Maybelline New York',
-    category: 'far',
-    image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?q=80&w=300&auto=format&fit=crop',
-    rating: 4.7,
-    reviewsCount: 3450,
-    prices: {
-      gratis: 589.90,
-      watsons: 599.90,
-      rossmann: 585.00,
-      eve: 569.90,
-      sephora: null,
-      trendyol: 519.00,
-      hepsiburada: 525.00,
-    },
-    description: '16 krem yapılı, nude ve sıcak tonlarda mat/ışıltılı renkler içeren göz farı paleti.',
-  },
+  // Add handcrafted products first
+  handcrafted.forEach(p => list.push(p));
 
-  // CİLT BAKIM
-  {
-    id: 'c1',
-    name: 'Hyaluronic Acid 2% + B5 Nemlendirici Serum',
-    brand: 'The Ordinary',
-    category: 'cilt',
-    image: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?q=80&w=300&auto=format&fit=crop',
-    rating: 4.7,
-    reviewsCount: 7120,
-    prices: {
-      gratis: null,
-      watsons: null,
-      rossmann: 520.00,
-      eve: null,
-      sephora: 590.00,
-      trendyol: 460.00,
-      hepsiburada: 475.00,
-    },
-    description: 'Cildin farklı katmanlarını yoğun şekilde nemlendiren, pürüzsüzleştiren hyalüronik asit serumu.',
-  },
-  {
-    id: 'c2',
-    name: 'Glikolik Asit %7 Gözenek Sıkılaştırıcı Tonik',
-    brand: 'The Ordinary',
-    category: 'cilt',
-    image: 'https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?q=80&w=300&auto=format&fit=crop',
-    rating: 4.6,
-    reviewsCount: 5410,
-    prices: {
-      gratis: null,
-      watsons: null,
-      rossmann: 650.00,
-      eve: null,
-      sephora: 720.00,
-      trendyol: 590.00,
-      hepsiburada: 610.00,
-    },
-    description: 'Cildi nazikçe eksfoliye eden, cilt tonunu eşitleyen ve parlaklık veren glikolik asit toniği.',
-  },
-];
+  brands.forEach((brand) => {
+    categories.forEach((cat) => {
+      cat.prefix.forEach((prodName) => {
+        const seedBase = hashCode(brand + prodName);
+        const numVariations = 4 + (seedBase % 5); // 4-8 variations
+        
+        for (let s = 0; s < numVariations; s++) {
+          const shadeIndex = (hashCode(brand + prodName + s) % shades.length);
+          const shade = shades[shadeIndex];
+          const fullName = `${prodName} (${shade})`;
+
+          if (list.some(p => p.name.toLowerCase() === fullName.toLowerCase() && p.brand.toLowerCase() === brand.toLowerCase())) {
+            continue;
+          }
+
+          const seed = hashCode(brand + fullName);
+          const basePrice = 110 + (seed % 1400);
+          const rating = 4.1 + ((seed % 9) / 10);
+          const reviews = 15 + (seed % 4200);
+          
+          const gratisDiff = 0.94 + ((seed % 12) / 100);
+          const watsonsDiff = 0.95 + (((seed + 2) % 12) / 100);
+          const rossmannDiff = 0.93 + (((seed + 4) % 12) / 100);
+          const eveDiff = 0.90 + (((seed + 6) % 12) / 100);
+          
+          const isLuxury = brand === 'Clinique' || brand === 'Dior' || brand === 'NARS' || brand === 'Estee Lauder' || brand === 'Lancome' || brand === 'Shiseido' || brand === 'Bobbi Brown' || brand === 'Benefit Cosmetics' || brand === 'Charlotte Tilbury' || brand === 'Too Faced' || brand === 'Huda Beauty' || brand === 'Anastasia Beverly Hills' || brand === 'Urban Decay' || brand === 'Kryolan' || basePrice > 500;
+          const sephoraDiff = isLuxury ? 1.05 + (((seed + 8) % 10) / 100) : null;
+          
+          const trendyolDiff = 0.85 + (((seed + 10) % 12) / 100);
+          const hepsiburadaDiff = 0.87 + (((seed + 12) % 12) / 100);
+
+          const roundPrice = (p: number | null) => {
+            if (p === null) return null;
+            return Math.round(p / 10) * 10 - 0.1;
+          };
+
+          const simulatedProduct: Product = {
+            id: `gen-${seed}`,
+            name: fullName,
+            brand: brand,
+            category: cat.id,
+            image: getCategoryImage(cat.id, seed),
+            rating: parseFloat(rating.toFixed(1)),
+            reviewsCount: reviews,
+            prices: {
+              gratis: isLuxury ? null : roundPrice(basePrice * gratisDiff),
+              watsons: isLuxury ? null : roundPrice(basePrice * watsonsDiff),
+              rossmann: isLuxury && brand !== 'Shiseido' && brand !== 'Dior' ? roundPrice(basePrice * rossmannDiff) : (isLuxury ? null : roundPrice(basePrice * rossmannDiff)),
+              eve: isLuxury ? null : roundPrice(basePrice * eveDiff),
+              sephora: roundPrice(sephoraDiff ? basePrice * sephoraDiff : null),
+              trendyol: roundPrice(basePrice * trendyolDiff) as number,
+              hepsiburada: roundPrice(basePrice * hepsiburadaDiff) as number,
+            },
+            description: `${brand} kalitesiyle geliştirilmiş, çantanızdan eksik etmeyeceğiniz premium ${fullName}.`,
+          };
+
+          list.push(simulatedProduct);
+        }
+      });
+    });
+  });
+
+  return list;
+}
+
+export const INITIAL_PRODUCTS: Product[] = generateMassiveProducts();
 
 // String'e göre benzersiz sayı üreten basit hash fonksiyonu (deterministic simülasyon için)
 function hashCode(str: string): number {
@@ -599,23 +779,42 @@ export function searchAndSimulateProducts(query: string, categoryId = 'all'): Pr
 }
 
 // Kategorilere göre şık Unsplash görseli döndürür
-export function getCategoryImage(category: string): string {
-  switch (category) {
-    case 'ruj':
-      return 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?q=80&w=300&auto=format&fit=crop';
-    case 'rimel':
-      return 'https://images.unsplash.com/photo-1631214524020-7e18db9a8f92?q=80&w=300&auto=format&fit=crop';
-    case 'kalem':
-      return 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?q=80&w=300&auto=format&fit=crop';
-    case 'allik':
-      return 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?q=80&w=300&auto=format&fit=crop';
-    case 'far':
-      return 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?q=80&w=300&auto=format&fit=crop';
-    case 'oje':
-      return 'https://images.unsplash.com/photo-1604654894610-df4906b1126a?q=80&w=300&auto=format&fit=crop';
-    case 'cilt':
-      return 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?q=80&w=300&auto=format&fit=crop';
-    default:
-      return 'https://images.unsplash.com/photo-1612817288484-6f916006741a?q=80&w=300&auto=format&fit=crop';
-  }
+export function getCategoryImage(category: string, seed = 0): string {
+  const images: Record<string, string[]> = {
+    ruj: [
+      'https://images.unsplash.com/photo-1586495777744-4413f21062fa?q=80&w=300&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?q=80&w=300&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1591348278863-a8fb3887e2ac?q=80&w=300&auto=format&fit=crop'
+    ],
+    rimel: [
+      'https://images.unsplash.com/photo-1631214524020-7e18db9a8f92?q=80&w=300&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1596462502278-27bfdc403348?q=80&w=300&auto=format&fit=crop'
+    ],
+    kalem: [
+      'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?q=80&w=300&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1631214524020-7e18db9a8f92?q=80&w=300&auto=format&fit=crop'
+    ],
+    allik: [
+      'https://images.unsplash.com/photo-1596462502278-27bfdc403348?q=80&w=300&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?q=80&w=300&auto=format&fit=crop'
+    ],
+    far: [
+      'https://images.unsplash.com/photo-1596462502278-27bfdc403348?q=80&w=300&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?q=80&w=300&auto=format&fit=crop'
+    ],
+    oje: [
+      'https://images.unsplash.com/photo-1604654894610-df4906b1126a?q=80&w=300&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1519014816548-bf5fe059798b?q=80&w=300&auto=format&fit=crop'
+    ],
+    cilt: [
+      'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?q=80&w=300&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?q=80&w=300&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1556228720-195a672e8a03?q=80&w=300&auto=format&fit=crop'
+    ]
+  };
+
+  const list = images[category] || [
+    'https://images.unsplash.com/photo-1612817288484-6f916006741a?q=80&w=300&auto=format&fit=crop'
+  ];
+  return list[Math.abs(seed) % list.length];
 }
