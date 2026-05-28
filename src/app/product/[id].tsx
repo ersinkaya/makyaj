@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -10,6 +10,7 @@ import {
   Platform,
   useColorScheme,
   Linking,
+  ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { 
@@ -20,29 +21,54 @@ import {
   Store,
   ExternalLink,
   Info,
-  AlertCircle
+  AlertCircle,
+  TrendingDown,
+  TrendingUp,
+  Activity,
+  Calendar,
+  Smile
 } from 'lucide-react-native';
 
-import { Colors, Spacing } from '@/constants/theme';
-import { INITIAL_PRODUCTS, Product, STORE_NAMES, getCategoryImage } from '@/constants/mockData';
+import { Colors, Spacing, BottomTabInset } from '@/constants/theme';
+import { 
+  INITIAL_PRODUCTS, 
+  Product, 
+  STORE_NAMES, 
+  getCategoryImage,
+  getProductSymbol,
+  CATEGORIES
+} from '@/constants/mockData';
 import { useWishlist } from '@/context/WishlistContext';
+
+interface HistoryItem {
+  date: string;
+  price: number;
+  change: number;
+}
 
 export default function ProductDetailScreen() {
   const scheme = useColorScheme();
-  const themeColors = Colors[scheme === 'unspecified' ? 'light' : scheme];
+  const themeColors = Colors[scheme === 'unspecified' || !scheme ? 'light' : scheme];
   
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { addToWishlist, isInWishlist } = useWishlist();
+  const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
 
-  // Find the product in INITIAL_PRODUCTS or dynamically reconstruct it if it is a simulated one
+  const [selectedPeriod, setSelectedPeriod] = useState<number>(30);
+
+  const periods = [
+    { label: '1 Ay', days: 30 },
+    { label: '3 Ay', days: 90 },
+    { label: '6 Ay', days: 180 },
+  ];
+
+  // Find the product in INITIAL_PRODUCTS or dynamically reconstruct it if simulated
   const product = useMemo((): Product | null => {
     if (!id) return null;
     
     const found = INITIAL_PRODUCTS.find((p) => p.id === id);
     if (found) return found;
 
-    // Reconstruct simulated product from id if it starts with "sim-" or "custom-"
     if (id.startsWith('sim-') || id.startsWith('custom-')) {
       const seed = parseInt(id.split('-')[1]) || Date.now();
       const basePrice = 80 + (seed % 600);
@@ -51,14 +77,17 @@ export default function ProductDetailScreen() {
         return Math.round(p / 10) * 10 - 0.1;
       };
 
-      // Determine category based on seed
       const categories = ['ruj', 'rimel', 'kalem', 'allik', 'far', 'oje', 'cilt'];
       const category = categories[seed % categories.length];
+      const brand = 'Simüle Marka';
+      const name = `Makyaj Ürünü #${seed % 1000}`;
 
       return {
         id,
-        name: `Makyaj Ürünü #${seed % 1000}`,
-        brand: 'Makyaj Markası',
+        name,
+        brand,
+        symbol: getProductSymbol(brand, name),
+        change: -15.0 + ((seed % 2500) / 100),
         category,
         image: getCategoryImage(category),
         rating: 4.5,
@@ -72,14 +101,14 @@ export default function ProductDetailScreen() {
           trendyol: roundPrice(basePrice * 0.88) as number,
           hepsiburada: roundPrice(basePrice * 0.90) as number,
         },
-        description: 'Arama sonucundan simüle edilen özel ürün detayları.',
+        description: 'Borsa üzerinden simüle edilen özel ürün detayları.',
       };
     }
 
     return null;
   }, [id]);
 
-  const alreadyAdded = useMemo(() => {
+  const inWatchlist = useMemo(() => {
     return product ? isInWishlist(product.id) : false;
   }, [product, isInWishlist]);
 
@@ -96,6 +125,36 @@ export default function ProductDetailScreen() {
       .filter((item) => item.price !== null)
       .sort((a, b) => (a.price as number) - (b.price as number));
   }, [product]);
+
+  const cheapest = storePricesList[0];
+
+  // Generate simulated historical price data for the selected period
+  const historicalData = useMemo((): HistoryItem[] => {
+    if (!cheapest) return [];
+    const list: HistoryItem[] = [];
+    const basePrice = cheapest.price;
+    const seed = product ? product.id.charCodeAt(0) + product.id.charCodeAt(product.id.length - 1) : 42;
+
+    for (let i = 0; i < selectedPeriod; i += 3) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+
+      // Daily fluctuation calculation based on index and cosine wave
+      const wave = Math.cos((i + seed) * 0.5) * 4 + Math.sin(i * 0.2) * 2;
+      const dailyPrice = basePrice * (1 + wave / 100);
+      const prevPrice = basePrice * (1 + (Math.cos((i + 1 + seed) * 0.5) * 4 + Math.sin((i + 1) * 0.2) * 2) / 100);
+      const change = ((dailyPrice - prevPrice) / prevPrice) * 100;
+
+      list.push({
+        date: dateStr,
+        price: parseFloat(dailyPrice.toFixed(2)),
+        change: parseFloat(change.toFixed(2)),
+      });
+    }
+
+    return list;
+  }, [cheapest, selectedPeriod, product]);
 
   const openStoreUrl = (storeKey: string) => {
     if (!product) return;
@@ -133,8 +192,8 @@ export default function ProductDetailScreen() {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
         <View style={styles.errorContainer}>
-          <AlertCircle color="#FF8C94" size={48} />
-          <Text style={[styles.errorTitle, { color: themeColors.text }]}>Ürün Bulunamadı</Text>
+          <AlertCircle color={themeColors.danger} size={48} />
+          <Text style={[styles.errorTitle, { color: themeColors.text }]}>Hisse Bulunamadı</Text>
           <Pressable 
             onPress={() => router.back()} 
             style={[styles.backBtn, { backgroundColor: themeColors.primary }]}
@@ -146,148 +205,267 @@ export default function ProductDetailScreen() {
     );
   }
 
-  const cheapest = storePricesList[0];
+  const isDrop = product.change < 0;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
       {/* Navbar */}
-      <View style={styles.navBar}>
+      <View style={[styles.navBar, { borderBottomColor: themeColors.border }]}>
         <Pressable 
           onPress={() => router.back()}
           style={[styles.iconButton, { backgroundColor: themeColors.backgroundElement }]}
         >
           <ArrowLeft color={themeColors.text} size={20} />
         </Pressable>
-        <Text style={[styles.navTitle, { color: themeColors.text }]}>Ürün Detayı</Text>
-        <View style={{ width: 40 }} /> {/* Spacer */}
+        <Text style={[styles.navTitle, { color: themeColors.text }]}>{product.symbol} Analizi</Text>
+        <Pressable
+          onPress={() => {
+            if (inWatchlist) {
+              removeFromWishlist(product.id);
+            } else {
+              addToWishlist(product, 'Detay Sayfasından Takip');
+            }
+          }}
+          style={[styles.iconButton, { backgroundColor: themeColors.backgroundElement }]}
+        >
+          <Heart 
+            color={inWatchlist ? themeColors.accent : themeColors.text} 
+            fill={inWatchlist ? themeColors.accent : 'transparent'} 
+            size={20} 
+          />
+        </Pressable>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Cover Image */}
-        <View style={[styles.imageContainer, { borderColor: themeColors.border }]}>
-          <Image source={{ uri: product.image }} style={styles.coverImage} />
-        </View>
-
-        {/* Brand & Name */}
-        <View style={styles.metaContainer}>
-          <Text style={[styles.brandText, { color: themeColors.primary }]}>
-            {product.brand}
-          </Text>
-          <Text style={[styles.nameText, { color: themeColors.text }]}>
-            {product.name}
-          </Text>
-
-          {/* Rating */}
-          <View style={styles.ratingContainer}>
-            <View style={styles.starsRow}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <Star 
-                  key={star} 
-                  color={star <= Math.round(product.rating) ? '#F2CC8F' : themeColors.border} 
-                  fill={star <= Math.round(product.rating) ? '#F2CC8F' : 'transparent'} 
-                  size={16} 
-                />
-              ))}
+        {/* Cover Product Info Card (Borsa Style) */}
+        <View style={[styles.priceCard, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}>
+          <View style={styles.priceHeader}>
+            <View style={styles.priceHeaderLeft}>
+              <Text style={[styles.ticker, { color: themeColors.text }]}>{product.symbol}</Text>
+              <View style={[styles.brandBadge, { backgroundColor: themeColors.primary + '30', borderColor: themeColors.primary }]}>
+                <Text style={[styles.brandBadgeText, { color: themeColors.accent }]}>{product.brand}</Text>
+              </View>
             </View>
-            <Text style={[styles.ratingVal, { color: themeColors.text }]}>{product.rating}</Text>
-            <Text style={[styles.reviewsText, { color: themeColors.textSecondary }]}>
-              ({product.reviewsCount} Yorum)
+            
+            <View style={[styles.ratingBadge, { backgroundColor: themeColors.primary + '20' }]}>
+              <Star size={12} color="#F2CC8F" fill="#F2CC8F" style={{ marginRight: 3 }} />
+              <Text style={[styles.ratingTextVal, { color: themeColors.text }]}>{product.rating}</Text>
+            </View>
+          </View>
+
+          <Text style={[styles.productName, { color: themeColors.text }]}>{product.name}</Text>
+          <Text style={[styles.categoryLabelText, { color: themeColors.textSecondary }]}>
+            Kategori: {CATEGORIES.find(c => c.id === product.category)?.name || product.category}
+          </Text>
+
+          <View style={styles.cheapestPriceWrapper}>
+            <Text style={[styles.priceLabel, { color: themeColors.textSecondary }]}>En Düşük Fiyat</Text>
+            {cheapest ? (
+              <Text style={[styles.priceValue, { color: themeColors.text }]}>
+                ₺{cheapest.price.toLocaleString('tr-TR')}
+                <Text style={styles.priceStoreName}> ({cheapest.storeName})</Text>
+              </Text>
+            ) : (
+              <Text style={[styles.priceValue, { color: themeColors.textSecondary }]}>Veri Yok</Text>
+            )}
+          </View>
+
+          {/* Change rate percentage indicator */}
+          <View style={[styles.changeBadge, { backgroundColor: isDrop ? themeColors.success + '20' : themeColors.danger + '20' }]}>
+            {isDrop ? (
+              <TrendingDown size={14} color={themeColors.success} style={{ marginRight: 3 }} />
+            ) : (
+              <TrendingUp size={14} color={themeColors.danger} style={{ marginRight: 3 }} />
+            )}
+            <Text style={[styles.changeTextVal, { color: isDrop ? themeColors.success : themeColors.danger }]}>
+              %{Math.abs(product.change).toFixed(2)} {isDrop ? 'İndirim' : 'Artış'}
             </Text>
           </View>
-        </View>
 
-        {/* Description */}
-        <View style={[styles.card, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}>
-          <View style={styles.cardHeader}>
-            <Info color={themeColors.primary} size={18} />
-            <Text style={[styles.cardTitle, { color: themeColors.text }]}>Ürün Hakkında</Text>
-          </View>
-          <Text style={[styles.descriptionText, { color: themeColors.textSecondary }]}>
-            {product.description || 'Bu makyaj ve bakım ürünü hakkında detaylı açıklama yakında eklenecektir.'}
+          <Text style={[styles.reviewsCountText, { color: themeColors.textSecondary }]}>
+            Bu ürün hakkında toplam {product.reviewsCount} borsa yorumu bulunmaktadır.
           </Text>
         </View>
 
-        {/* Price Comparison */}
+        {/* Cover Image Preview */}
+        <View style={[styles.imageCard, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}>
+          <Image source={{ uri: product.image }} style={styles.productImage} />
+        </View>
+
+        {/* Product Description */}
         <View style={[styles.card, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}>
           <View style={styles.cardHeader}>
-            <Store color={themeColors.primary} size={18} />
-            <Text style={[styles.cardTitle, { color: themeColors.text }]}>Mağaza Fiyat Karşılaştırması</Text>
+            <Info color={themeColors.accent} size={16} />
+            <Text style={[styles.cardTitle, { color: themeColors.text }]}>Hisse İzahnamesi (Açıklama)</Text>
+          </View>
+          <Text style={[styles.descriptionText, { color: themeColors.textSecondary }]}>
+            {product.description || 'Bu makyaj hisse senedi hakkında detaylı açıklama yakında eklenecektir.'}
+          </Text>
+        </View>
+
+        {/* Live Arbitrage Store Prices Table */}
+        <View style={[styles.card, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}>
+          <View style={styles.cardHeader}>
+            <Store color={themeColors.accent} size={16} />
+            <Text style={[styles.cardTitle, { color: themeColors.text }]}>Piyasa Derinliği (Mağaza Karşılaştırması)</Text>
           </View>
           
-          <View style={styles.pricesList}>
+          <View style={styles.pricesTable}>
+            {/* Table Header */}
+            <View style={[styles.tableHeader, { borderBottomColor: themeColors.border }]}>
+              <Text style={[styles.tableHeaderLabel, { flex: 2, color: themeColors.textSecondary }]}>Mağaza/Broker</Text>
+              <Text style={[styles.tableHeaderLabel, { flex: 1.5, color: themeColors.textSecondary, textAlign: 'right' }]}>Fiyat</Text>
+              <Text style={[styles.tableHeaderLabel, { flex: 1.2, color: themeColors.textSecondary, textAlign: 'right' }]}>Makas %</Text>
+            </View>
+
+            {/* Table Rows */}
             {storePricesList.map((store, index) => {
               const isCheapest = index === 0;
+              const deltaPercent = cheapest ? ((store.price - cheapest.price) / cheapest.price) * 100 : 0;
+
               return (
-                <Pressable 
-                  key={store.storeKey} 
+                <Pressable
+                  key={store.storeKey}
                   onPress={() => openStoreUrl(store.storeKey)}
                   style={({ pressed }) => [
-                    styles.priceRow, 
+                    styles.tableRow,
                     { 
                       borderBottomColor: themeColors.border,
-                      borderBottomWidth: index === storePricesList.length - 1 ? 0 : 1,
-                      opacity: pressed ? 0.7 : 1,
+                      backgroundColor: pressed ? themeColors.backgroundSelected : 'transparent'
                     }
                   ]}
                 >
-                  <View style={styles.storeNameCol}>
-                    <Text style={[styles.storeNameText, { color: themeColors.text, fontWeight: isCheapest ? '700' : '500' }]}>
+                  <View style={[styles.tableCellStore, { flex: 2 }]}>
+                    <Text style={[styles.storeText, { color: themeColors.text, fontWeight: isCheapest ? '700' : '500' }]}>
                       {store.storeName}
                     </Text>
                     {isCheapest && (
-                      <View style={[styles.cheapestBadge, { backgroundColor: themeColors.success }]}>
-                        <Text style={styles.cheapestBadgeText}>En Ucuz</Text>
+                      <View style={[styles.rowCheapestBadge, { backgroundColor: themeColors.success }]}>
+                        <Text style={styles.rowCheapestBadgeText}>EN UCUZ</Text>
                       </View>
                     )}
                   </View>
-
-                  <View style={styles.priceCol}>
-                    <Text style={[styles.priceText, { color: themeColors.text, fontWeight: isCheapest ? '800' : '600' }]}>
-                      {store.price?.toFixed(2)} TL
-                    </Text>
-                    <View style={styles.linkButton}>
-                      <ExternalLink color={themeColors.textSecondary} size={14} />
-                    </View>
+                  
+                  <Text style={[styles.storePrice, { flex: 1.5, color: themeColors.text, fontWeight: isCheapest ? '800' : '700', textAlign: 'right' }]}>
+                    ₺{store.price.toFixed(2)}
+                  </Text>
+                  
+                  <View style={{ flex: 1.2, alignItems: 'flex-end' }}>
+                    {isCheapest ? (
+                      <Text style={[styles.deltaCheapestText, { color: themeColors.success }]}>Lider</Text>
+                    ) : (
+                      <View style={[styles.deltaBadgeSmall, { backgroundColor: themeColors.danger + '15' }]}>
+                        <Text style={[styles.deltaBadgeSmallText, { color: themeColors.danger }]}>
+                          +{deltaPercent.toFixed(1)}%
+                        </Text>
+                      </View>
+                    )}
                   </View>
                 </Pressable>
               );
             })}
           </View>
         </View>
+
+        {/* Historical Price Chart/Table Selector (1M/3M/6M) */}
+        <View style={[styles.card, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}>
+          <View style={styles.cardHeader}>
+            <Calendar color={themeColors.accent} size={16} />
+            <Text style={[styles.cardTitle, { color: themeColors.text }]}>Tarihsel Fiyat Grafiği (Simüle)</Text>
+          </View>
+
+          {/* Period selector */}
+          <View style={styles.periodRow}>
+            {periods.map((period) => (
+              <Pressable
+                key={period.days}
+                onPress={() => setSelectedPeriod(period.days)}
+                style={[
+                  styles.periodButton,
+                  selectedPeriod === period.days && { backgroundColor: themeColors.accent, borderColor: themeColors.accent },
+                  { borderColor: themeColors.border }
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.periodButtonText,
+                    selectedPeriod === period.days && { color: '#FFF' },
+                    { color: themeColors.text }
+                  ]}
+                >
+                  {period.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          {/* Historical Table data */}
+          <View style={styles.historyList}>
+            <View style={[styles.tableHeader, { borderBottomColor: themeColors.border }]}>
+              <Text style={[styles.tableHeaderLabel, { flex: 2, color: themeColors.textSecondary }]}>Tarih</Text>
+              <Text style={[styles.tableHeaderLabel, { flex: 2, color: themeColors.textSecondary, textAlign: 'right' }]}>Kapanış Fiyatı</Text>
+              <Text style={[styles.tableHeaderLabel, { flex: 1.5, color: themeColors.textSecondary, textAlign: 'right' }]}>Günlük Fark</Text>
+            </View>
+
+            {historicalData.map((item, index) => {
+              const changeIsDrop = item.change < 0;
+              return (
+                <View key={item.date} style={[styles.historyRow, index % 2 === 1 && { backgroundColor: themeColors.background + '40' }]}>
+                  <Text style={[styles.historyDate, { flex: 2, color: themeColors.textSecondary }]}>{item.date}</Text>
+                  <Text style={[styles.historyPrice, { flex: 2, color: themeColors.text, textAlign: 'right' }]}>
+                    ₺{item.price.toFixed(2)}
+                  </Text>
+                  <View style={{ flex: 1.5, alignItems: 'flex-end' }}>
+                    <View style={[styles.historyChangeBadge, { backgroundColor: changeIsDrop ? themeColors.success + '20' : themeColors.danger + '20' }]}>
+                      <Text style={[styles.historyChangeText, { color: changeIsDrop ? themeColors.success : themeColors.danger }]}>
+                        {changeIsDrop ? '' : '+'}{item.change.toFixed(1)}%
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        </View>
       </ScrollView>
 
-      {/* Sticky Bottom Action Bar */}
+      {/* Sticky Bottom Actions */}
       <View style={[styles.bottomBar, { backgroundColor: themeColors.backgroundElement, borderTopColor: themeColors.border }]}>
         <View style={styles.bottomBarPrice}>
           <Text style={[styles.bottomLabel, { color: themeColors.textSecondary }]}>En iyi fiyat</Text>
           {cheapest ? (
             <Text style={[styles.bottomPriceVal, { color: themeColors.text }]}>
-              {cheapest.price?.toFixed(2)} TL <Text style={styles.bottomStore}>({cheapest.storeName})</Text>
+              ₺{cheapest.price.toFixed(2)} <Text style={[styles.bottomStoreTextVal, { color: themeColors.accent }]}>({cheapest.storeName})</Text>
             </Text>
           ) : (
-            <Text style={[styles.bottomPriceVal, { color: themeColors.text }]}>Fiyat yok</Text>
+            <Text style={[styles.bottomPriceVal, { color: themeColors.textSecondary }]}>Fiyat yok</Text>
           )}
         </View>
 
         <Pressable
-          onPress={() => addToWishlist(product, 'Detay sayfasından')}
-          disabled={alreadyAdded}
+          onPress={() => {
+            if (inWatchlist) {
+              removeFromWishlist(product.id);
+            } else {
+              addToWishlist(product, 'Hisse Detay Sayfasından Hızlı Takip');
+            }
+          }}
           style={[
             styles.actionButton, 
             { 
-              backgroundColor: alreadyAdded ? themeColors.success : themeColors.primary,
+              backgroundColor: inWatchlist ? themeColors.primary : themeColors.accent,
             }
           ]}
         >
-          {alreadyAdded ? (
+          {inWatchlist ? (
             <>
-              <Check color="#FFF" size={18} />
-              <Text style={styles.actionText}>Listeme Eklendi</Text>
+              <Check color="#4A3538" size={16} />
+              <Text style={[styles.actionText, { color: '#4A3538' }]}>Takipte</Text>
             </>
           ) : (
             <>
-              <Heart color="#FFF" size={18} />
-              <Text style={styles.actionText}>Listeme Ekle</Text>
+              <Heart color="#FFF" size={16} />
+              <Text style={[styles.actionText, { color: '#FFF' }]}>Takip Listeme Ekle</Text>
             </>
           )}
         </Pressable>
@@ -307,68 +485,128 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingTop: Platform.OS === 'ios' ? Spacing.two : Spacing.four,
     paddingBottom: Spacing.two,
+    borderBottomWidth: 1,
   },
   iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     justifyContent: 'center',
     alignItems: 'center',
   },
   navTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
   },
   scrollContent: {
     paddingHorizontal: Spacing.three,
-    paddingBottom: Spacing.six + Spacing.four,
+    paddingVertical: Spacing.three,
+    paddingBottom: BottomTabInset + Spacing.six + 40,
   },
-  imageContainer: {
-    width: '100%',
-    height: 250,
-    borderRadius: 24,
+  // Price Card
+  priceCard: {
+    borderRadius: 18,
     borderWidth: 1,
-    overflow: 'hidden',
-    backgroundColor: '#FFF',
-    marginTop: Spacing.two,
+    padding: Spacing.three + 2,
+    marginBottom: Spacing.three,
   },
-  coverImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+  priceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  metaContainer: {
-    marginVertical: Spacing.three,
-    gap: 4,
-  },
-  brandText: {
-    fontSize: 12,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  nameText: {
-    fontSize: 20,
-    fontWeight: '800',
-    lineHeight: 28,
-  },
-  ratingContainer: {
+  priceHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
-    marginTop: Spacing.one,
+    gap: 8,
   },
-  starsRow: {
+  ticker: {
+    fontSize: 20,
+    fontWeight: '900',
+  },
+  brandBadge: {
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+    borderWidth: 0.5,
+  },
+  brandBadgeText: {
+    fontSize: 8,
+    fontWeight: '800',
+  },
+  ratingBadge: {
     flexDirection: 'row',
-    gap: 2,
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
   },
-  ratingVal: {
-    fontSize: 14,
+  ratingTextVal: {
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  productName: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginTop: Spacing.two,
+  },
+  categoryLabelText: {
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  cheapestPriceWrapper: {
+    marginTop: Spacing.three,
+  },
+  priceLabel: {
+    fontSize: 10,
     fontWeight: '700',
   },
-  reviewsText: {
-    fontSize: 12,
+  priceValue: {
+    fontSize: 24,
+    fontWeight: '900',
+    marginTop: 2,
   },
+  priceStoreName: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  changeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.two + 2,
+    paddingVertical: Spacing.one + 2,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginTop: Spacing.two,
+  },
+  changeTextVal: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  reviewsCountText: {
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: Spacing.two + 2,
+  },
+  // Cover Image
+  imageCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: Spacing.two,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.three,
+    overflow: 'hidden',
+  },
+  productImage: {
+    width: '100%',
+    height: 180,
+    borderRadius: 12,
+    resizeMode: 'cover',
+    backgroundColor: '#FFF',
+  },
+  // Card elements
   card: {
     borderRadius: 18,
     borderWidth: 1,
@@ -378,58 +616,119 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
-    paddingBottom: Spacing.two,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(232, 167, 181, 0.15)',
-    marginBottom: Spacing.two,
+    gap: 8,
+    marginBottom: Spacing.three,
   },
   cardTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
   },
   descriptionText: {
-    fontSize: 13,
+    fontSize: 12,
     lineHeight: 18,
   },
-  pricesList: {
+  // Prices table
+  pricesTable: {
     gap: 0,
   },
-  priceRow: {
+  tableHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: Spacing.two + 2,
+    paddingBottom: Spacing.two,
+    borderBottomWidth: 1,
+    marginBottom: Spacing.one,
   },
-  storeNameCol: {
+  tableHeaderLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  tableRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
+    paddingVertical: Spacing.three - 2,
+    paddingHorizontal: Spacing.one,
+    borderRadius: 8,
   },
-  storeNameText: {
-    fontSize: 14,
+  tableCellStore: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-  cheapestBadge: {
+  storeText: {
+    fontSize: 13,
+  },
+  rowCheapestBadge: {
+    paddingHorizontal: 4,
     paddingVertical: 1,
+    borderRadius: 4,
+  },
+  rowCheapestBadgeText: {
+    color: '#FFF',
+    fontSize: 7,
+    fontWeight: '800',
+  },
+  storePrice: {
+    fontSize: 13,
+  },
+  deltaCheapestText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  deltaBadgeSmall: {
+    paddingHorizontal: 4,
+    paddingVertical: 1.5,
+    borderRadius: 4,
+  },
+  deltaBadgeSmallText: {
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  // Period select
+  periodRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+    marginBottom: Spacing.three,
+  },
+  periodButton: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: Spacing.one + 2,
+    borderRadius: 8,
+    borderWidth: 1,
+    backgroundColor: 'transparent',
+  },
+  periodButtonText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  // History table
+  historyList: {
+    marginTop: Spacing.one,
+  },
+  historyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.two,
     borderRadius: 6,
   },
-  cheapestBadgeText: {
-    color: '#FFF',
-    fontSize: 8,
+  historyDate: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  historyPrice: {
+    fontSize: 12,
     fontWeight: '800',
   },
-  priceCol: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
+  historyChangeBadge: {
+    paddingHorizontal: 5,
+    paddingVertical: 1.5,
+    borderRadius: 4,
   },
-  priceText: {
-    fontSize: 14,
+  historyChangeText: {
+    fontSize: 9,
+    fontWeight: '800',
   },
-  linkButton: {
-    padding: 2,
-  },
+  // Bottom Bar
   bottomBar: {
     position: 'absolute',
     bottom: 0,
@@ -451,27 +750,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   bottomPriceVal: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     marginTop: 2,
   },
-  bottomStore: {
+  bottomStoreTextVal: {
     fontSize: 11,
-    fontWeight: '500',
+    fontWeight: '700',
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: Spacing.three - 2,
-    paddingHorizontal: Spacing.five,
-    borderRadius: 14,
-    gap: Spacing.two,
+    paddingVertical: Spacing.two + 1,
+    paddingHorizontal: Spacing.four,
+    borderRadius: 12,
+    gap: 4,
   },
   actionText: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '800',
   },
   errorContainer: {
     flex: 1,
@@ -480,7 +778,7 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   errorTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
   },
   backBtn: {

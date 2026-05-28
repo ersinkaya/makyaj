@@ -6,21 +6,23 @@ export interface WishlistItem {
   product: Product;
   quantity: number;
   note: string;
+  group: string; // Watchlist grubu (örn: 'Favorilerim', 'Fiyat Takip', 'Alacaklarım')
 }
 
 interface WishlistContextType {
   items: WishlistItem[];
-  addToWishlist: (product: Product, note?: string) => void;
+  addToWishlist: (product: Product, note?: string, group?: string) => void;
   removeFromWishlist: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   updateNote: (productId: string, note: string) => void;
+  updateGroup: (productId: string, group: string) => void;
   clearWishlist: () => void;
   isInWishlist: (productId: string) => boolean;
 }
 
 const WishlistContext = createContext<WishlistContextType | undefined>(undefined);
 
-const STORAGE_KEY = '@makyaj_wishlist_v1';
+const STORAGE_KEY = '@makyaj_wishlist_v2'; // Bumped key to avoid JSON schema mismatch
 
 export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<WishlistItem[]>([]);
@@ -33,6 +35,17 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const stored = await AsyncStorage.getItem(STORAGE_KEY);
         if (stored) {
           setItems(JSON.parse(stored));
+        } else {
+          // Backward compatibility check for v1
+          const oldStored = await AsyncStorage.getItem('@makyaj_wishlist_v1');
+          if (oldStored) {
+            const oldItems = JSON.parse(oldStored);
+            const upgraded = oldItems.map((item: any) => ({
+              ...item,
+              group: 'Favorilerim'
+            }));
+            setItems(upgraded);
+          }
         }
       } catch (e) {
         console.error('Failed to load wishlist', e);
@@ -56,15 +69,15 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     saveWishlist();
   }, [items, isLoaded]);
 
-  const addToWishlist = (product: Product, note = '') => {
+  const addToWishlist = (product: Product, note = '', group = 'Favorilerim') => {
     setItems((prev) => {
-      const existingIndex = prev.findIndex((item) => item.product.id === product.id);
+      const existingIndex = prev.findIndex((item) => item.product.id === product.id && item.group === group);
       if (existingIndex > -1) {
         const updated = [...prev];
         updated[existingIndex].quantity += 1;
         return updated;
       }
-      return [...prev, { product, quantity: 1, note }];
+      return [...prev, { product, quantity: 1, note, group }];
     });
   };
 
@@ -92,6 +105,14 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     );
   };
 
+  const updateGroup = (productId: string, group: string) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.product.id === productId ? { ...item, group } : item
+      )
+    );
+  };
+
   const clearWishlist = () => {
     setItems([]);
   };
@@ -108,6 +129,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         removeFromWishlist,
         updateQuantity,
         updateNote,
+        updateGroup,
         clearWishlist,
         isInWishlist,
       }}

@@ -17,7 +17,8 @@ export const Colors = {
     backgroundSelected: '#FAD2E1', // Highlight Pink
     textSecondary: '#8C7377', // Muted Rose
     border: '#E8D3D6',
-    success: '#81B29A',
+    success: '#4CAF50', // Soft Green for Discounts
+    danger: '#E05D6C', // Soft Red for Price Rises
     warning: '#F2CC8F',
   },
   dark: {
@@ -29,7 +30,8 @@ export const Colors = {
     backgroundSelected: '#422C30', // Highlight Dark Rose
     textSecondary: '#CDB5B8', // Muted Pink Grey
     border: '#3D2B2E',
-    success: '#81B29A',
+    success: '#81B29A', // Soft Green for Discounts
+    danger: '#FF5252', // Red for Price Rises
     warning: '#F2CC8F',
   },
 } as const;

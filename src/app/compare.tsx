@@ -11,7 +11,7 @@ import {
   useColorScheme,
   Linking,
 } from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { 
   Check, 
   AlertTriangle, 
@@ -21,12 +21,14 @@ import {
   Split, 
   Store,
   Sparkles,
-  ChevronRight
+  ChevronRight,
+  TrendingUp,
+  Activity
 } from 'lucide-react-native';
 
 import { Colors, Spacing, BottomTabInset } from '@/constants/theme';
 import { useWishlist, WishlistItem } from '@/context/WishlistContext';
-import { STORE_NAMES, StorePrices } from '@/constants/mockData';
+import { STORE_NAMES, StorePrices, Product } from '@/constants/mockData';
 
 interface StoreResult {
   storeKey: keyof StorePrices;
@@ -39,7 +41,7 @@ interface StoreResult {
 
 export default function CompareScreen() {
   const scheme = useColorScheme();
-  const themeColors = Colors[scheme === 'unspecified' ? 'light' : scheme];
+  const themeColors = Colors[scheme === 'unspecified' || !scheme ? 'light' : scheme];
   
   const router = useRouter();
   const { items } = useWishlist();
@@ -112,7 +114,7 @@ export default function CompareScreen() {
       };
     });
 
-    // Sort by: 1. Max availability (if a store doesn't have the product, it shouldn't rank first), 2. Cheapest price
+    // Sort by: 1. Max availability, 2. Cheapest price
     return results.sort((a, b) => {
       if (a.availableCount !== b.availableCount) {
         return b.availableCount - a.availableCount; // More available first
@@ -169,23 +171,23 @@ export default function CompareScreen() {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
         <View style={styles.header}>
-          <Text style={[styles.titleText, { color: themeColors.text }]}>Karşılaştırma</Text>
+          <Text style={[styles.titleText, { color: themeColors.text }]}>Analiz & Arbitraj</Text>
         </View>
         
         <View style={styles.emptyContainer}>
           <View style={[styles.emptyIconContainer, { backgroundColor: themeColors.backgroundElement }]}>
-            <TrendingDown color={themeColors.primary} size={48} />
+            <Activity color={themeColors.accent} size={48} />
           </View>
-          <Text style={[styles.emptyTitle, { color: themeColors.text }]}>Karşılaştırılacak Ürün Yok</Text>
+          <Text style={[styles.emptyTitle, { color: themeColors.text }]}>Karşılaştırılacak Varlık Yok</Text>
           <Text style={[styles.emptySubtitle, { color: themeColors.textSecondary }]}>
-            Mağazalardaki en ucuz fiyatları görebilmek için listenize en az bir makyaj ürünü eklemelisiniz.
+            Mağazalar arası fiyat arbitrajı yapabilmek için öncelikle izleme listenize (watchlist) ürün eklemelisiniz.
           </Text>
           <Pressable 
             onPress={() => router.push('/')}
             style={[styles.exploreButton, { backgroundColor: themeColors.primary }]}
           >
-            <Sparkles color="#FFF" size={18} />
-            <Text style={styles.exploreButtonText}>Hemen Ürün Ekle</Text>
+            <Sparkles color="#4A3538" size={18} />
+            <Text style={styles.exploreButtonText}>Borsaya Git & Ürün Ekle</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -199,42 +201,42 @@ export default function CompareScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={[styles.titleText, { color: themeColors.text }]}>Fiyat Karşılaştırma</Text>
+        <Text style={[styles.titleText, { color: themeColors.text }]}>Fiyat Arbitraj Analizi</Text>
         <Text style={[styles.countText, { color: themeColors.textSecondary }]}>
-          {totalQuantity} Ürün Sepeti
+          {totalQuantity} Varlık Portföyü
         </Text>
       </View>
 
-      {/* Tabs / Toggle Segment */}
+      {/* Tabs / Toggle Segment in Borsa style */}
       <View style={[styles.segmentContainer, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}>
         <Pressable
           onPress={() => setActiveTab('store')}
           style={[
             styles.segmentButton,
-            { backgroundColor: activeTab === 'store' ? themeColors.background : 'transparent' }
+            activeTab === 'store' && { backgroundColor: themeColors.background, borderColor: themeColors.border }
           ]}
         >
-          <Store color={activeTab === 'store' ? themeColors.primary : themeColors.textSecondary} size={16} />
+          <Store color={activeTab === 'store' ? themeColors.accent : themeColors.textSecondary} size={15} />
           <Text style={[styles.segmentText, { color: activeTab === 'store' ? themeColors.text : themeColors.textSecondary }]}>
-            Tek Mağaza Karşılaştır
+            Tek Mağaza Endeksi
           </Text>
         </Pressable>
         <Pressable
           onPress={() => setActiveTab('split')}
           style={[
             styles.segmentButton,
-            { backgroundColor: activeTab === 'split' ? themeColors.background : 'transparent' }
+            activeTab === 'split' && { backgroundColor: themeColors.background, borderColor: themeColors.border }
           ]}
         >
-          <Split color={activeTab === 'split' ? themeColors.primary : themeColors.textSecondary} size={16} />
+          <Split color={activeTab === 'split' ? themeColors.accent : themeColors.textSecondary} size={15} />
           <Text style={[styles.segmentText, { color: activeTab === 'split' ? themeColors.text : themeColors.textSecondary }]}>
-            Akıllı Sepet Bölme
+            Akıllı Bölünmüş Sepet
           </Text>
         </Pressable>
       </View>
 
       {activeTab === 'store' ? (
-        /* SINGLE STORE COMPARISON LIST */
+        /* SINGLE STORE COMPARISON LIST (STOCK ROWS STYLE) */
         <FlatList
           data={storeComparison}
           keyExtractor={(item) => item.storeKey}
@@ -242,20 +244,20 @@ export default function CompareScreen() {
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
             <View style={[styles.summaryCard, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}>
-              <View style={styles.summaryBadge}>
-                <TrendingDown color="#FFF" size={16} />
-                <Text style={styles.summaryBadgeText}>En Hesaplı Mağaza</Text>
+              <View style={[styles.summaryBadge, { backgroundColor: themeColors.primary }]}>
+                <TrendingDown color="#4A3538" size={14} />
+                <Text style={styles.summaryBadgeText}>En Hesaplı Tek Endeks</Text>
               </View>
               <Text style={[styles.summaryTitle, { color: themeColors.text }]}>
-                {cheapestSingleStore.storeName}
+                {cheapestSingleStore.storeName} Portföyü
               </Text>
               <Text style={[styles.summaryDesc, { color: themeColors.textSecondary }]}>
-                Bu sepetteki ürünlerin tamamını ya da en büyük kısmını en ucuz fiyatla sunan mağaza.
+                Sepetinizdeki ürünlerin tamamını tek bir mağazadan en makul fiyatla alabileceğiniz en uygun alternatif.
               </Text>
               <View style={styles.summaryPriceRow}>
-                <Text style={[styles.summaryPriceLabel, { color: themeColors.textSecondary }]}>Sepet Toplamı:</Text>
+                <Text style={[styles.summaryPriceLabel, { color: themeColors.textSecondary }]}>Toplam Endeks Fiyatı:</Text>
                 <Text style={[styles.summaryPrice, { color: themeColors.text }]}>
-                  {cheapestSingleStore.totalPrice} TL
+                  ₺{cheapestSingleStore.totalPrice.toLocaleString('tr-TR')}
                 </Text>
               </View>
             </View>
@@ -263,14 +265,19 @@ export default function CompareScreen() {
           renderItem={({ item, index }) => {
             const isCheapest = index === 0 && item.availableCount === totalQuantity;
             const hasMissing = item.availableCount < totalQuantity;
+            
+            // Calculate percentage difference compared to cheapest single store
+            const percentageDiff = cheapestSingleStore.totalPrice > 0 
+              ? ((item.totalPrice - cheapestSingleStore.totalPrice) / cheapestSingleStore.totalPrice) * 100
+              : 0;
 
             return (
               <View style={[
                 styles.storeRow, 
                 { 
                   backgroundColor: themeColors.backgroundElement, 
-                  borderColor: isCheapest ? themeColors.primary : themeColors.border,
-                  borderWidth: isCheapest ? 2 : 1
+                  borderColor: isCheapest ? themeColors.accent : themeColors.border,
+                  borderWidth: isCheapest ? 1.5 : 1
                 }
               ]}>
                 <View style={styles.storeMainInfo}>
@@ -279,29 +286,40 @@ export default function CompareScreen() {
                       {item.storeName}
                     </Text>
                     {isCheapest && (
-                      <View style={[styles.cheapestBadge, { backgroundColor: themeColors.primary }]}>
-                        <Text style={styles.cheapestBadgeText}>En Ucuz</Text>
+                      <View style={[styles.cheapestBadge, { backgroundColor: themeColors.accent }]}>
+                        <Text style={styles.cheapestBadgeText}>EN UCUZ</Text>
                       </View>
                     )}
                   </View>
 
                   <View style={styles.availabilityRow}>
-                    <Check color={hasMissing ? themeColors.warning : themeColors.success} size={14} />
+                    <Check color={hasMissing ? themeColors.warning : themeColors.success} size={12} />
                     <Text style={[styles.availabilityText, { color: themeColors.textSecondary }]}>
-                      {item.availableCount}/{item.totalCount} Ürün Mevcut
+                      {item.availableCount}/{item.totalCount} Varlık Mevcut
                     </Text>
                   </View>
                 </View>
 
+                {/* Right Column: Price & Delta % change */}
                 <View style={styles.storePriceInfo}>
                   <Text style={[styles.storePriceText, { color: themeColors.text }]}>
-                    {item.totalPrice > 0 ? `${item.totalPrice} TL` : 'Fiyat Yok'}
+                    {item.totalPrice > 0 ? `₺${item.totalPrice.toLocaleString('tr-TR')}` : 'Fiyat Yok'}
                   </Text>
-                  {hasMissing && (
-                    <View style={styles.missingBadge}>
-                      <AlertTriangle color="#F2CC8F" size={10} />
-                      <Text style={styles.missingBadgeText}>{item.missingItems.length} Eksik</Text>
+                  
+                  {hasMissing ? (
+                    <View style={[styles.missingBadge, { backgroundColor: themeColors.danger + '15' }]}>
+                      <AlertTriangle color={themeColors.danger} size={10} />
+                      <Text style={[styles.missingBadgeText, { color: themeColors.danger }]}>{item.missingItems.length} Eksik</Text>
                     </View>
+                  ) : (
+                    index > 0 && (
+                      <View style={[styles.deltaBadge, { backgroundColor: themeColors.danger + '15' }]}>
+                        <TrendingUp color={themeColors.danger} size={10} />
+                        <Text style={[styles.deltaText, { color: themeColors.danger }]}>
+                          +{percentageDiff.toFixed(1)}%
+                        </Text>
+                      </View>
+                    )
                   )}
                 </View>
               </View>
@@ -309,7 +327,7 @@ export default function CompareScreen() {
           }}
         />
       ) : (
-        /* SMART SPLIT BASKET LIST */
+        /* SMART SPLIT BASKET LIST (ARBITRAGE BASKET) */
         splitBasket && (
           <FlatList
             data={splitBasket.items}
@@ -317,38 +335,38 @@ export default function CompareScreen() {
             contentContainerStyle={[styles.listContainer, { paddingBottom: BottomTabInset + Spacing.six }]}
             showsVerticalScrollIndicator={false}
             ListHeaderComponent={
-              <View style={[styles.splitSummaryCard, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.primary, borderWidth: 1 }]}>
+              <View style={[styles.splitSummaryCard, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.accent, borderWidth: 1 }]}>
                 <View style={styles.summaryBadgeRow}>
-                  <View style={[styles.splitBadge, { backgroundColor: themeColors.primary }]}>
+                  <View style={[styles.splitBadge, { backgroundColor: themeColors.accent }]}>
                     <Split color="#FFF" size={14} />
-                    <Text style={styles.splitBadgeText}>Maksimum Tasarruf Sepeti</Text>
+                    <Text style={styles.splitBadgeText}>Bölünmüş Arbitraj Portföyü</Text>
                   </View>
                   {splitBasket.savings > 0 && (
                     <View style={[styles.savingsBadge, { backgroundColor: themeColors.success }]}>
                       <Text style={styles.savingsBadgeText}>
-                        {splitBasket.savings} TL Kazanç!
+                        ₺{splitBasket.savings.toLocaleString('tr-TR')} Tasarruf!
                       </Text>
                     </View>
                   )}
                 </View>
                 <Text style={[styles.splitSummaryTitle, { color: themeColors.text }]}>
-                  En Akıllı Karışık Sepet
+                  Akıllı Bölünmüş Arbitraj
                 </Text>
                 <Text style={[styles.splitSummaryDesc, { color: themeColors.textSecondary }]}>
-                  Her ürünü en ucuz olduğu mağazadan alarak yapabileceğiniz en tasarruflu alışveriş planı.
+                  Her bir makyaj hissesini en düşük fiyata sunan mağazadan ayrı ayrı satın alarak elde edebileceğiniz maksimum kazanç planı.
                 </Text>
                 
                 <View style={styles.splitPriceRow}>
                   <View>
-                    <Text style={[styles.splitPriceLabel, { color: themeColors.textSecondary }]}>Optimize Toplam</Text>
+                    <Text style={[styles.splitPriceLabel, { color: themeColors.textSecondary }]}>Optimize Toplam:</Text>
                     <Text style={[styles.splitPrice, { color: themeColors.text }]}>
-                      {splitBasket.totalPrice} TL
+                      ₺{splitBasket.totalPrice.toLocaleString('tr-TR')}
                     </Text>
                   </View>
                   <View style={styles.arrowCompareContainer}>
                     {cheapestSingleStore && (
                       <Text style={[styles.oldPriceText, { color: themeColors.textSecondary }]}>
-                        Tek Mağazadan En Ucuz: {cheapestSingleStore.totalPrice} TL
+                        Tek Mağazadan En Ucuz: ₺{cheapestSingleStore.totalPrice.toLocaleString('tr-TR')}
                       </Text>
                     )}
                   </View>
@@ -361,33 +379,32 @@ export default function CompareScreen() {
                 style={({ pressed }) => [
                   styles.splitItemRow, 
                   { 
-                    backgroundColor: themeColors.backgroundElement, 
+                    backgroundColor: pressed ? themeColors.backgroundSelected : themeColors.backgroundElement, 
                     borderColor: themeColors.border,
-                    opacity: pressed ? 0.75 : 1,
                   }
                 ]}
               >
                 <View style={styles.splitItemLeft}>
-                  <Text style={[styles.splitItemBrand, { color: themeColors.textSecondary }]}>
-                    {item.product.brand}
-                  </Text>
-                  <Text numberOfLines={1} style={[styles.splitItemName, { color: themeColors.text }]}>
-                    {item.product.name}
+                  <View style={styles.splitItemHeader}>
+                    <Text style={[styles.splitItemSymbol, { color: themeColors.text }]}>
+                      {item.product.symbol}
+                    </Text>
+                    <View style={[styles.splitStoreBadge, { backgroundColor: themeColors.primary }]}>
+                      <Text style={styles.splitStoreBadgeText}>{item.cheapestStoreName}</Text>
+                    </View>
+                  </View>
+                  <Text numberOfLines={1} style={[styles.splitItemName, { color: themeColors.textSecondary }]}>
+                    {item.product.brand} {item.product.name}
                   </Text>
                   <Text style={[styles.splitItemQty, { color: themeColors.textSecondary }]}>
-                    Adet: {item.quantity}
+                    Lot Adedi: {item.quantity} · Lot Birim Fiyatı: ₺{item.cheapestPrice.toFixed(2)}
                   </Text>
                 </View>
                 <View style={styles.splitItemRight}>
                   <Text style={[styles.splitItemPrice, { color: themeColors.text }]}>
-                    {item.itemTotal} TL
+                    ₺{item.itemTotal.toFixed(2)}
                   </Text>
-                  <View style={[styles.cheapestStoreIndicator, { backgroundColor: themeColors.background }]}>
-                    <Store color={themeColors.primary} size={11} />
-                    <Text style={[styles.cheapestStoreName, { color: themeColors.text }]}>
-                      {item.cheapestStoreName}
-                    </Text>
-                  </View>
+                  <ChevronRight size={14} color={themeColors.textSecondary} />
                 </View>
               </Pressable>
             )}
@@ -411,19 +428,19 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.three,
   },
   titleText: {
-    fontSize: 24,
-    fontWeight: '800',
+    fontSize: 22,
+    fontWeight: '900',
     letterSpacing: -0.5,
   },
   countText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
   },
   segmentContainer: {
     flexDirection: 'row',
     marginHorizontal: Spacing.three,
     marginBottom: Spacing.three,
-    padding: 4,
+    padding: 3,
     borderRadius: 14,
     borderWidth: 1,
   },
@@ -432,12 +449,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: Spacing.two - 2,
-    borderRadius: 10,
-    gap: Spacing.one + 2,
+    paddingVertical: Spacing.two - 1,
+    borderRadius: 11,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   segmentText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
   },
   listContainer: {
@@ -455,26 +474,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignSelf: 'flex-start',
     alignItems: 'center',
-    backgroundColor: '#D48C9E',
-    paddingVertical: 2,
+    paddingVertical: 3,
     paddingHorizontal: Spacing.two,
     borderRadius: 10,
     gap: 4,
     marginBottom: 4,
   },
   summaryBadgeText: {
-    color: '#FFF',
+    color: '#4A3538',
     fontSize: 9,
     fontWeight: '800',
     textTransform: 'uppercase',
   },
   summaryTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
   },
   summaryDesc: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 11,
+    lineHeight: 15,
     marginTop: 2,
   },
   summaryPriceRow: {
@@ -487,19 +505,19 @@ const styles = StyleSheet.create({
     marginTop: Spacing.two,
   },
   summaryPriceLabel: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
   },
   summaryPrice: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
   },
   storeRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: Spacing.three + 2,
-    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.three - 2,
     borderRadius: 16,
   },
   storeMainInfo: {
@@ -512,17 +530,17 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   storeNameText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
   },
   cheapestBadge: {
-    paddingVertical: 2,
-    paddingHorizontal: Spacing.two,
-    borderRadius: 8,
+    paddingVertical: 1,
+    paddingHorizontal: 6,
+    borderRadius: 6,
   },
   cheapestBadgeText: {
     color: '#FFF',
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '800',
   },
   availabilityRow: {
@@ -531,27 +549,42 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   availabilityText: {
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 11,
+    fontWeight: '600',
   },
   storePriceInfo: {
     alignItems: 'flex-end',
-    gap: 2,
+    gap: 3,
   },
   storePriceText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '800',
   },
   missingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 4,
   },
   missingBadgeText: {
-    color: '#F2CC8F',
-    fontSize: 10,
-    fontWeight: '600',
+    fontSize: 9,
+    fontWeight: '800',
   },
+  deltaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  deltaText: {
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  // Split Summary Card
   splitSummaryCard: {
     borderRadius: 18,
     padding: Spacing.three + 2,
@@ -589,12 +622,12 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   splitSummaryTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
   },
   splitSummaryDesc: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 11,
+    lineHeight: 15,
     marginTop: 2,
   },
   splitPriceRow: {
@@ -608,10 +641,10 @@ const styles = StyleSheet.create({
   },
   splitPriceLabel: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   splitPrice: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     marginTop: 2,
   },
@@ -619,10 +652,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   oldPriceText: {
-    fontSize: 11,
-    fontWeight: '500',
+    fontSize: 10,
+    fontWeight: '600',
     textDecorationLine: 'line-through',
   },
+  // Split Row items
   splitItemRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -635,40 +669,44 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: Spacing.two,
   },
-  splitItemBrand: {
-    fontSize: 9,
-    fontWeight: '700',
-    textTransform: 'uppercase',
+  splitItemHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  splitItemSymbol: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  splitStoreBadge: {
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  splitStoreBadgeText: {
+    fontSize: 8,
+    color: '#4A3538',
+    fontWeight: '800',
   },
   splitItemName: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '600',
-    marginTop: 2,
+    marginTop: 3,
   },
   splitItemQty: {
-    fontSize: 11,
+    fontSize: 10,
     marginTop: 2,
   },
   splitItemRight: {
-    alignItems: 'flex-end',
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 4,
   },
   splitItemPrice: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
   },
-  cheapestStoreIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 2,
-    paddingHorizontal: Spacing.two,
-    borderRadius: 8,
-    gap: 4,
-  },
-  cheapestStoreName: {
-    fontSize: 10,
-    fontWeight: '600',
-  },
+  // Empty states
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -677,36 +715,36 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.six,
   },
   emptyIconContainer: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: Spacing.four,
+    marginBottom: Spacing.three,
   },
   emptyTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '800',
     textAlign: 'center',
   },
   emptySubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 18,
     marginTop: Spacing.two,
-    marginBottom: Spacing.five,
+    marginBottom: Spacing.four,
   },
   exploreButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: Spacing.three - 2,
-    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
     borderRadius: 20,
-    gap: Spacing.two,
+    gap: 6,
   },
   exploreButtonText: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: '700',
+    color: '#4A3538',
+    fontSize: 12,
+    fontWeight: '800',
   },
 });

@@ -14,6 +14,8 @@ export interface Product {
   id: string;
   name: string;
   brand: string;
+  symbol: string; // Ticker sembolü
+  change: number; // Yüzdesel değişim (indirim)
   category: string;
   image: string;
   rating: number;
@@ -21,6 +23,13 @@ export interface Product {
   prices: StorePrices;
   description?: string;
   isCustom?: boolean;
+}
+
+// Borsa tarzı ticker sembolü üreten yardımcı fonksiyon
+export function getProductSymbol(brand: string, name: string): string {
+  const cleanBrand = brand.replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase().padEnd(4, 'X');
+  const cleanName = name.replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase().padEnd(4, 'X');
+  return `${cleanBrand}-${cleanName}`;
 }
 
 export const CATEGORIES = [
@@ -183,7 +192,7 @@ function generateMassiveProducts(): Product[] {
   const list: Product[] = [];
 
   // Handcrafted iconic products to keep database authentic
-  const handcrafted: Product[] = [
+  const handcrafted: any[] = [
     {
       id: 'm1',
       name: 'Lash Sensational Yelpaze Etkili Maskara',
@@ -510,7 +519,12 @@ function generateMassiveProducts(): Product[] {
   ];
 
   // Add handcrafted products first
-  handcrafted.forEach(p => list.push(p));
+  handcrafted.forEach(p => {
+    p.symbol = getProductSymbol(p.brand, p.name);
+    const seed = hashCode(p.brand + p.name);
+    p.change = -15.0 + ((seed % 2500) / 100); // -15.0% ile +10.0% arası
+    list.push(p);
+  });
 
   brands.forEach((brand) => {
     categories.forEach((cat) => {
@@ -552,6 +566,8 @@ function generateMassiveProducts(): Product[] {
             id: `gen-${seed}`,
             name: fullName,
             brand: brand,
+            symbol: getProductSymbol(brand, fullName),
+            change: -15.0 + ((seed % 2500) / 100),
             category: cat.id,
             image: getCategoryImage(cat.id, seed),
             rating: parseFloat(rating.toFixed(1)),
@@ -778,6 +794,8 @@ export function searchAndSimulateProducts(query: string, categoryId = 'all'): Pr
           id: `sim-${seed}`,
           name: variant,
           brand: brand,
+          symbol: getProductSymbol(brand, variant),
+          change: -15.0 + ((seed % 2500) / 100),
           category: category,
           image: getCategoryImage(category),
           rating: parseFloat(rating.toFixed(1)),
@@ -847,4 +865,46 @@ export function getCategoryImage(category: string, seed = 0): string {
     'https://images.unsplash.com/photo-1612817288484-6f916006741a?q=80&w=300&auto=format&fit=crop'
   ];
   return list[Math.abs(seed) % list.length];
+}
+
+// Borsa tarzı Canlı Makyaj Endekslerini döndüren fonksiyon
+export interface MarketIndex {
+  symbol: string;
+  name: string;
+  value: number;
+  change: number;
+}
+
+export function getMarketIndices(): MarketIndex[] {
+  let gratisSum = 0; let gratisCount = 0;
+  let watsonsSum = 0; let watsonsCount = 0;
+  let rossmannSum = 0; let rossmannCount = 0;
+  let overallSum = 0; let overallCount = 0;
+
+  INITIAL_PRODUCTS.slice(0, 100).forEach(p => {
+    if (p.prices.gratis) { gratisSum += p.prices.gratis; gratisCount++; }
+    if (p.prices.watsons) { watsonsSum += p.prices.watsons; watsonsCount++; }
+    if (p.prices.rossmann) { rossmannSum += p.prices.rossmann; rossmannCount++; }
+    
+    let cheapest = Infinity;
+    Object.values(p.prices).forEach(v => {
+      if (v !== null && v < cheapest) cheapest = v;
+    });
+    if (cheapest !== Infinity) {
+      overallSum += cheapest;
+      overallCount++;
+    }
+  });
+
+  const glowVal = overallCount > 0 ? overallSum / overallCount : 342.50;
+  const gratisVal = gratisCount > 0 ? gratisSum / gratisCount : 298.80;
+  const watsonsVal = watsonsCount > 0 ? watsonsSum / watsonsCount : 315.40;
+  const rossmannVal = rossmannCount > 0 ? rossmannSum / rossmannCount : 348.90;
+
+  return [
+    { symbol: 'GLOW100', name: 'GlowPrice 100', value: Math.round(glowVal * 10) / 10, change: -1.24 },
+    { symbol: 'GRTS', name: 'Gratis Endeksi', value: Math.round(gratisVal * 10) / 10, change: -2.48 },
+    { symbol: 'WTNS', name: 'Watsons Endeksi', value: Math.round(watsonsVal * 10) / 10, change: 0.85 },
+    { symbol: 'RSMN', name: 'Rossmann Endeksi', value: Math.round(rossmannVal * 10) / 10, change: -0.42 },
+  ];
 }
