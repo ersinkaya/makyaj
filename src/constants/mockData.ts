@@ -526,11 +526,12 @@ function generateMassiveProducts(): Product[] {
     list.push(p);
   });
 
-  brands.forEach((brand) => {
+  // Limit generation to first 5 brands to keep catalog size around 350 items instead of 13,000+ items
+  brands.slice(0, 5).forEach((brand) => {
     categories.forEach((cat) => {
       cat.prefix.forEach((prodName) => {
         const seedBase = hashCode(brand + prodName);
-        const numVariations = 4 + (seedBase % 5); // 4-8 variations
+        const numVariations = 1; // 1 variation per product shade instead of 4-8
         
         for (let s = 0; s < numVariations; s++) {
           const shadeIndex = (hashCode(brand + prodName + s) % shades.length);

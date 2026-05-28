@@ -13,7 +13,6 @@ import {
   SafeAreaView,
   Platform,
   useColorScheme,
-  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { 
@@ -23,7 +22,6 @@ import {
   Search, 
   Plus, 
   X, 
-  Check, 
   AlertCircle,
   TrendingDown,
   Layers,
@@ -93,6 +91,9 @@ export default function HomeScreen() {
   const [customName, setCustomName] = useState('');
   const [customBrand, setCustomBrand] = useState('');
   const [customCategory, setCustomCategory] = useState('ruj');
+
+  // Lazy loading state
+  const [visibleLimit, setVisibleLimit] = useState(16);
 
   // Load all simulated products
   const allProducts = useMemo(() => {
@@ -227,8 +228,6 @@ export default function HomeScreen() {
     const inWatchlist = isInWishlist(item.id);
     const discountPercent = Math.abs(Math.round(item.change));
     const isDiscounted = item.change < 0;
-
-    // Calculate original price roughly if discounted
     const originalPrice = cheapest ? (cheapest.price / (1 - discountPercent / 100)) : 0;
 
     return (
@@ -237,7 +236,6 @@ export default function HomeScreen() {
         onPress={() => router.push({ pathname: '/product/[id]', params: { id: item.id } })}
         style={[styles.horizontalCard, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}
       >
-        {/* Wishlist toggle badge */}
         <Pressable
           onPress={() => {
             if (inWatchlist) {
@@ -315,7 +313,6 @@ export default function HomeScreen() {
         onPress={() => router.push({ pathname: '/product/[id]', params: { id: item.id } })}
         style={[styles.gridCard, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}
       >
-        {/* Wishlist button */}
         <Pressable
           onPress={() => {
             if (inWatchlist) {
@@ -449,132 +446,145 @@ export default function HomeScreen() {
         )}
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.six }}>
-        
-        {/* Campaign Banner Carousel (Conditional) */}
-        {!hasSearch && selectedCategory === 'all' && (
-          <View style={styles.bannerContainer}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} pagingEnabled snapToAlignment="center" snapToInterval={width - Spacing.six} contentContainerStyle={styles.bannerScroll}>
-              {CAMPAIGNS.map(item => (
-                <View key={item.id} style={[styles.bannerCard, { backgroundColor: item.bg, borderColor: item.border }]}>
-                  <View style={styles.bannerBadge}>
-                    <Text style={styles.bannerBadgeText}>{item.badge}</Text>
+      {/* Virtualized Main FlatList Grid */}
+      <FlatList
+        data={hasSearch || selectedCategory !== 'all' ? filteredProducts.slice(0, visibleLimit) : allProducts.slice(0, visibleLimit)}
+        keyExtractor={(item) => item.id}
+        numColumns={2}
+        columnWrapperStyle={styles.gridRow}
+        contentContainerStyle={[styles.listContainer, { paddingBottom: BottomTabInset + Spacing.six }]}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <View>
+            {/* Campaign Banner Carousel */}
+            {!hasSearch && selectedCategory === 'all' && (
+              <View style={styles.bannerContainer}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} pagingEnabled snapToAlignment="center" snapToInterval={width - Spacing.six} contentContainerStyle={styles.bannerScroll}>
+                  {CAMPAIGNS.map(item => (
+                    <View key={item.id} style={[styles.bannerCard, { backgroundColor: item.bg, borderColor: item.border }]}>
+                      <View style={styles.bannerBadge}>
+                        <Text style={styles.bannerBadgeText}>{item.badge}</Text>
+                      </View>
+                      <Text style={styles.bannerTitle} numberOfLines={1}>{item.title}</Text>
+                      <Text style={styles.bannerDesc} numberOfLines={2}>{item.desc}</Text>
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
+            {/* Category Circle Row */}
+            <View style={styles.categoriesContainer}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesScroll}>
+                {CATEGORIES.map(cat => {
+                  const isSelected = selectedCategory === cat.id;
+                  return (
+                    <Pressable
+                      key={cat.id}
+                      onPress={() => setSelectedCategory(cat.id)}
+                      style={styles.categoryCircleItem}
+                    >
+                      <View 
+                        style={[
+                          styles.categoryCircle, 
+                          { 
+                            backgroundColor: isSelected ? themeColors.primary : themeColors.backgroundElement,
+                            borderColor: isSelected ? themeColors.accent : themeColors.border 
+                          }
+                        ]}
+                      >
+                        {getCategoryIcon(cat.id, isSelected ? '#4A3538' : themeColors.text, 20)}
+                      </View>
+                      <Text 
+                        style={[
+                          styles.categoryLabel, 
+                          { 
+                            color: isSelected ? themeColors.text : themeColors.textSecondary,
+                            fontWeight: isSelected ? '700' : '500' 
+                          }
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {cat.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            {/* Curated horizontal sections */}
+            {!hasSearch && selectedCategory === 'all' ? (
+              <>
+                {/* Günün Fırsatları */}
+                <View style={styles.sectionContainer}>
+                  <View style={styles.sectionHeaderRow}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Percent size={16} color={themeColors.success} />
+                      <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Günün İndirim Fırsatları</Text>
+                    </View>
                   </View>
-                  <Text style={styles.bannerTitle} numberOfLines={1}>{item.title}</Text>
-                  <Text style={styles.bannerDesc} numberOfLines={2}>{item.desc}</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
+                    {dealsOfDay.map(renderHorizontalProductCard)}
+                  </ScrollView>
                 </View>
-              ))}
-            </ScrollView>
-          </View>
-        )}
 
-        {/* Category Circle Row */}
-        <View style={styles.categoriesContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesScroll}>
-            {CATEGORIES.map(cat => {
-              const isSelected = selectedCategory === cat.id;
-              return (
-                <Pressable
-                  key={cat.id}
-                  onPress={() => setSelectedCategory(cat.id)}
-                  style={styles.categoryCircleItem}
-                >
-                  <View 
-                    style={[
-                      styles.categoryCircle, 
-                      { 
-                        backgroundColor: isSelected ? themeColors.primary : themeColors.backgroundElement,
-                        borderColor: isSelected ? themeColors.accent : themeColors.border 
-                      }
-                    ]}
-                  >
-                    {getCategoryIcon(cat.id, isSelected ? '#4A3538' : themeColors.text, 20)}
+                {/* Popüler Ürünler */}
+                <View style={styles.sectionContainer}>
+                  <View style={styles.sectionHeaderRow}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <ShoppingCart size={16} color={themeColors.accent} />
+                      <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Borsada En Çok Arananlar</Text>
+                    </View>
                   </View>
-                  <Text 
-                    style={[
-                      styles.categoryLabel, 
-                      { 
-                        color: isSelected ? themeColors.text : themeColors.textSecondary,
-                        fontWeight: isSelected ? '700' : '500' 
-                      }
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {cat.name}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
+                    {popularProducts.map(renderHorizontalProductCard)}
+                  </ScrollView>
+                </View>
 
-        {/* MAIN PRODUCT DISPLAYS */}
-        {hasSearch || selectedCategory !== 'all' ? (
-          /* ACTIVE FILTER GRID DISPLAY */
-          <View style={styles.sectionContainer}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Arama ve Filtre Sonuçları</Text>
-              <Text style={[styles.sectionSubtitleText, { color: themeColors.textSecondary }]}>
-                {filteredProducts.length} ürün bulundu
-              </Text>
-            </View>
-            <View style={styles.productGrid}>
-              {filteredProducts.map(renderGridProductCard)}
-            </View>
-            {filteredProducts.length === 0 && (
-              <View style={styles.emptyResults}>
-                <AlertCircle size={32} color={themeColors.textSecondary} />
-                <Text style={[styles.emptyResultsTitle, { color: themeColors.text }]}>Eşleşen Ürün Bulunamadı</Text>
-                <Text style={[styles.emptyResultsSubtitle, { color: themeColors.textSecondary }]}>
-                  Seçtiğiniz filtreye uygun kozmetik ürünü bulunmamaktadır.
-                </Text>
+                {/* Sizin İçin Seçtiklerimiz Section Title */}
+                <View style={styles.sectionContainer}>
+                  <View style={styles.sectionHeaderRow}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Sparkles size={16} color={themeColors.accent} />
+                      <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Sizin İçin Seçtiklerimiz</Text>
+                    </View>
+                  </View>
+                </View>
+              </>
+            ) : (
+              /* Arama / Filtre Sonuçları Section Title */
+              <View style={styles.sectionContainer}>
+                <View style={styles.sectionHeaderRow}>
+                  <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Arama ve Filtre Sonuçları</Text>
+                  <Text style={[styles.sectionSubtitleText, { color: themeColors.textSecondary }]}>
+                    {filteredProducts.length} ürün bulundu
+                  </Text>
+                </View>
               </View>
             )}
           </View>
-        ) : (
-          /* DEFAULT CURATED HOMEPAGE SECTIONS */
-          <>
-            {/* Günün Fırsatları */}
-            <View style={styles.sectionContainer}>
-              <View style={styles.sectionHeaderRow}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Percent size={16} color={themeColors.success} />
-                  <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Günün İndirim Fırsatları</Text>
-                </View>
-              </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-                {dealsOfDay.map(renderHorizontalProductCard)}
-              </ScrollView>
+        }
+        renderItem={({ item }) => renderGridProductCard(item)}
+        onEndReached={() => {
+          const totalLength = hasSearch || selectedCategory !== 'all' ? filteredProducts.length : allProducts.length;
+          if (visibleLimit < totalLength) {
+            setVisibleLimit(prev => prev + 12);
+          }
+        }}
+        onEndReachedThreshold={0.5}
+        ListEmptyComponent={
+          (hasSearch || selectedCategory !== 'all') && filteredProducts.length === 0 ? (
+            <View style={styles.emptyResults}>
+              <AlertCircle size={32} color={themeColors.textSecondary} />
+              <Text style={[styles.emptyResultsTitle, { color: themeColors.text }]}>Eşleşen Ürün Bulunamadı</Text>
+              <Text style={[styles.emptyResultsSubtitle, { color: themeColors.textSecondary }]}>
+                Seçtiğiniz filtreye uygun kozmetik ürünü bulunmamaktadır.
+              </Text>
             </View>
-
-            {/* Popüler Ürünler */}
-            <View style={styles.sectionContainer}>
-              <View style={styles.sectionHeaderRow}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <ShoppingCart size={16} color={themeColors.accent} />
-                  <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Borsada En Çok Arananlar</Text>
-                </View>
-              </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-                {popularProducts.map(renderHorizontalProductCard)}
-              </ScrollView>
-            </View>
-
-            {/* Sizin İçin Seçtiklerimiz (Tüm Ürünler Grid) */}
-            <View style={styles.sectionContainer}>
-              <View style={styles.sectionHeaderRow}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Sparkles size={16} color={themeColors.accent} />
-                  <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Sizin İçin Seçtiklerimiz</Text>
-                </View>
-              </View>
-              <View style={styles.productGrid}>
-                {allProducts.slice(0, 16).map(renderGridProductCard)}
-              </View>
-            </View>
-          </>
-        )}
-      </ScrollView>
+          ) : null
+        }
+      />
 
       {/* QUICK PRODUCT ADD MODAL */}
       <Modal
@@ -834,7 +844,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     overflow: 'hidden',
     position: 'relative',
-    marginBottom: 10,
+  },
+  gridRow: {
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
   cardHeartIcon: {
     position: 'absolute',
@@ -951,6 +964,9 @@ const styles = StyleSheet.create({
   emptyResultsSubtitle: {
     fontSize: 11,
     textAlign: 'center',
+  },
+  listContainer: {
+    paddingHorizontal: Spacing.three,
   },
   // Modal layout
   modalOverlay: {
