@@ -12,18 +12,16 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   Modal,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { 
   X, 
-  Check, 
-  Eye, 
   ShoppingCart,
   Plus,
   Trash2,
   AlertCircle,
   PlusCircle,
-  TrendingDown,
   Edit2
 } from 'lucide-react-native';
 
@@ -59,12 +57,11 @@ export default function WishlistScreen() {
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [tempNote, setTempNote] = useState('');
 
-  // Handle asset search
+  // Handle search suggestions
   const handleSearchTextChange = (text: string) => {
     setSearchText(text);
     if (text.trim().length >= 2) {
       const results = searchAndSimulateProducts(text, 'all')
-        // Filter out items already in the active watchlist group
         .filter(p => !items.some(item => item.product.id === p.id && item.group === activeGroup))
         .slice(0, 5);
       setSearchResults(results);
@@ -92,7 +89,7 @@ export default function WishlistScreen() {
 
   // Delete watchlist group
   const handleDeleteGroup = (groupToDelete: string) => {
-    if (groupToDelete === 'Favorilerim') return; // Protect default group
+    if (groupToDelete === 'Favorilerim') return;
     
     // Remove group name from list
     setGroups(prev => prev.filter(g => g !== groupToDelete));
@@ -152,82 +149,81 @@ export default function WishlistScreen() {
     setEditingNoteId(null);
   };
 
-  // Render stock-row watchlist item
+  // Render shopping-cart style wishlist item
   const renderWatchlistItem = ({ item }: { item: WishlistItem }) => {
     const cheapest = getCheapestPriceInfo(item.product.prices);
-    const isDrop = item.product.change < 0;
 
     return (
-      <View style={[styles.stockCard, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}>
-        <Pressable 
-          onPress={() => router.push({ pathname: '/product/[id]', params: { id: item.product.id } })}
-          style={styles.stockItem}
-        >
-          {/* Left Column: Ticker & Brand */}
-          <View style={styles.stockLeft}>
-            <View style={styles.stockSymbolRow}>
-              <Text style={[styles.stockSymbol, { color: themeColors.text }]}>{item.product.symbol}</Text>
-              <View style={[styles.brandBadge, { backgroundColor: themeColors.primary + '20', borderColor: themeColors.primary }]}>
-                <Text style={[styles.brandBadgeText, { color: themeColors.accent }]}>{item.product.brand.split(' ')[0]}</Text>
-              </View>
-            </View>
-            <Text numberOfLines={1} style={[styles.stockName, { color: themeColors.textSecondary }]}>
+      <View style={[styles.cartCard, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}>
+        <View style={styles.cartItemRow}>
+          {/* Product Thumbnail */}
+          <Pressable 
+            onPress={() => router.push({ pathname: '/product/[id]', params: { id: item.product.id } })}
+            style={styles.thumbnailWrapper}
+          >
+            <Image source={{ uri: item.product.image }} style={styles.thumbnailImage} />
+          </Pressable>
+
+          {/* Details */}
+          <View style={styles.detailsColumn}>
+            <Text style={[styles.itemBrand, { color: themeColors.textSecondary }]} numberOfLines={1}>
+              {item.product.brand.toUpperCase()}
+            </Text>
+            <Text numberOfLines={1} style={[styles.itemName, { color: themeColors.text }]}>
               {item.product.name}
             </Text>
+            
+            {cheapest ? (
+              <View style={styles.priceContainer}>
+                <Text style={[styles.itemPrice, { color: themeColors.text }]}>
+                  ₺{(cheapest.price * item.quantity).toFixed(1)}
+                </Text>
+                <Text style={[styles.storeIndicator, { color: themeColors.accent }]}>
+                  {cheapest.store}'de en ucuz
+                </Text>
+              </View>
+            ) : (
+              <Text style={[styles.itemPrice, { color: themeColors.textSecondary }]}>Stokta Yok</Text>
+            )}
           </View>
 
-          {/* Center Column: Price & Change */}
-          <View style={styles.stockCenter}>
-            {cheapest ? (
-              <Text style={[styles.stockPrice, { color: themeColors.text }]}>
-                ₺{(cheapest.price * item.quantity).toFixed(2)}
+          {/* Quantity Controls & Delete */}
+          <View style={styles.actionsColumn}>
+            <Pressable
+              onPress={() => removeFromWishlist(item.product.id)}
+              style={styles.deleteBtn}
+            >
+              <Trash2 size={16} color={themeColors.danger} />
+            </Pressable>
+
+            <View style={styles.quantityWrapper}>
+              <Pressable
+                onPress={() => updateQuantity(item.product.id, item.quantity - 1)}
+                style={[styles.qtyButton, { borderColor: themeColors.border }]}
+              >
+                <Text style={[styles.qtyButtonText, { color: themeColors.text }]}>-</Text>
+              </Pressable>
+              <Text style={[styles.qtyText, { color: themeColors.text }]}>
+                {item.quantity}
               </Text>
-            ) : (
-              <Text style={[styles.stockPrice, { color: themeColors.textSecondary }]}>Fiyat Yok</Text>
-            )}
-            <View style={[styles.changeBadge, { backgroundColor: isDrop ? themeColors.success + '15' : themeColors.danger + '15' }]}>
-              <Text style={[styles.changeText, { color: isDrop ? themeColors.success : themeColors.danger }]}>
-                {isDrop ? '' : '+'}{item.product.change.toFixed(1)}%
-              </Text>
+              <Pressable
+                onPress={() => updateQuantity(item.product.id, item.quantity + 1)}
+                style={[styles.qtyButton, { borderColor: themeColors.border }]}
+              >
+                <Text style={[styles.qtyButtonText, { color: themeColors.text }]}>+</Text>
+              </Pressable>
             </View>
           </View>
+        </View>
 
-          {/* Quantity Actions */}
-          <View style={styles.quantityContainer}>
-            <Pressable
-              onPress={() => updateQuantity(item.product.id, item.quantity - 1)}
-              style={[styles.quantityBtn, { borderColor: themeColors.border }]}
-            >
-              <Text style={[styles.quantityBtnText, { color: themeColors.text }]}>-</Text>
-            </Pressable>
-            <Text style={[styles.quantityText, { color: themeColors.text }]}>
-              {item.quantity}
-            </Text>
-            <Pressable
-              onPress={() => updateQuantity(item.product.id, item.quantity + 1)}
-              style={[styles.quantityBtn, { borderColor: themeColors.border }]}
-            >
-              <Text style={[styles.quantityBtnText, { color: themeColors.text }]}>+</Text>
-            </Pressable>
-          </View>
-
-          {/* Remove Action */}
-          <Pressable
-            onPress={() => removeFromWishlist(item.product.id)}
-            style={styles.deleteBtn}
-          >
-            <Trash2 size={16} color={themeColors.danger} />
-          </Pressable>
-        </Pressable>
-
-        {/* Note / Edit Note sub-bar */}
-        <View style={[styles.noteRow, { borderTopColor: themeColors.border, backgroundColor: themeColors.background }]}>
+        {/* Notes Section */}
+        <View style={[styles.noteSection, { borderTopColor: themeColors.border, backgroundColor: themeColors.background }]}>
           {editingNoteId === item.product.id ? (
             <View style={styles.editNoteRow}>
               <TextInput
                 value={tempNote}
                 onChangeText={setTempNote}
-                placeholder="Renk no veya adet notu..."
+                placeholder="Renk no veya alışveriş notu ekleyin..."
                 placeholderTextColor={themeColors.textSecondary}
                 style={[styles.noteInput, { color: themeColors.text, borderColor: themeColors.primary }]}
                 autoFocus
@@ -237,7 +233,7 @@ export default function WishlistScreen() {
                 onPress={() => handleSaveNote(item.product.id)}
                 style={[styles.saveNoteBtn, { backgroundColor: themeColors.accent }]}
               >
-                <Text style={styles.saveNoteText}>Kaydet</Text>
+                <Text style={styles.saveNoteText}>Tamam</Text>
               </Pressable>
             </View>
           ) : (
@@ -245,7 +241,7 @@ export default function WishlistScreen() {
               onPress={() => handleStartEditNote(item)}
               style={styles.viewNoteRow}
             >
-              <Edit2 size={11} color={themeColors.textSecondary} />
+              <Edit2 size={10} color={themeColors.textSecondary} />
               <Text 
                 style={[
                   styles.noteText, 
@@ -253,7 +249,7 @@ export default function WishlistScreen() {
                 ]}
                 numberOfLines={1}
               >
-                {item.note || 'Ürün notu ekleyin (örn: 02 numra pembe)...'}
+                {item.note || 'Not ekle (örn: 02 numara pembe)...'}
               </Text>
             </Pressable>
           )}
@@ -270,13 +266,13 @@ export default function WishlistScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={[styles.titleText, { color: themeColors.text }]}>İzleme Listesi</Text>
+          <Text style={[styles.titleText, { color: themeColors.text }]}>Alışveriş Listelerim</Text>
           <Text style={[styles.countText, { color: themeColors.textSecondary }]}>
-            {activeGroupItems.length} Hisse / Varlık
+            {activeGroupItems.length} Ürün
           </Text>
         </View>
 
-        {/* Watchlist Groups Scroll */}
+        {/* List Groups badges */}
         <View style={[styles.groupSection, { borderBottomColor: themeColors.border }]}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.groupScroll}>
             {groups.map(group => {
@@ -311,12 +307,12 @@ export default function WishlistScreen() {
           </ScrollView>
         </View>
 
-        {/* Add Asset Section */}
+        {/* Quick Add Search input */}
         <View style={styles.addSection}>
           <View style={[styles.searchContainer, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}>
             <PlusCircle size={18} color={themeColors.accent} style={{ marginRight: 8 }} />
             <TextInput
-              placeholder={`"${activeGroup}" listesine ürün/hisse ekle...`}
+              placeholder={`"${activeGroup}" listesine hızlı ürün ekle...`}
               placeholderTextColor={themeColors.textSecondary}
               value={searchText}
               onChangeText={handleSearchTextChange}
@@ -339,7 +335,6 @@ export default function WishlistScreen() {
                   style={[styles.searchResultItem, { borderBottomColor: themeColors.border }]}
                 >
                   <View style={styles.searchResultLeft}>
-                    <Text style={[styles.searchResultSymbol, { color: themeColors.accent }]}>{p.symbol}</Text>
                     <Text numberOfLines={1} style={[styles.searchResultName, { color: themeColors.text }]}>{p.brand} {p.name}</Text>
                   </View>
                   <Plus size={16} color={themeColors.accent} />
@@ -349,21 +344,13 @@ export default function WishlistScreen() {
           )}
         </View>
 
-        {/* Info row */}
-        <View style={styles.infoRow}>
-          <Text style={[styles.infoText, { color: themeColors.textSecondary }]}>
-            {activeGroupItems.length} Kalem · {activeGroup} Portföyü
-          </Text>
-          <Text style={[styles.infoText, { color: themeColors.textSecondary }]}>Anlık Canlı Veri</Text>
-        </View>
-
         {/* Watchlist Body */}
         {activeGroupItems.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Eye size={48} color={themeColors.textSecondary} />
-            <Text style={[styles.emptyTitle, { color: themeColors.text }]}>Bu Liste Boş</Text>
+            <AlertCircle size={48} color={themeColors.textSecondary} />
+            <Text style={[styles.emptyTitle, { color: themeColors.text }]}>Listeniz Boş</Text>
             <Text style={[styles.emptySubtitle, { color: themeColors.textSecondary }]}>
-              Yukarıdaki arama çubuğundan bu listeye takip etmek istediğiniz makyaj hisselerini ekleyin.
+              Bu listede henüz ürün yok. Arama çubuğundan hızlıca arayıp ekleyebilirsiniz.
             </Text>
           </View>
         ) : (
@@ -377,12 +364,12 @@ export default function WishlistScreen() {
           />
         )}
 
-        {/* Bottom Total Portfolio Bar & Compare Action */}
+        {/* Bottom Cart Action Footer */}
         {activeGroupItems.length > 0 && (
           <View style={[styles.bottomBar, { backgroundColor: themeColors.backgroundElement, borderTopColor: themeColors.border }]}>
             <View style={styles.totalRow}>
               <View>
-                <Text style={[styles.totalLabel, { color: themeColors.textSecondary }]}>Portföy Toplam Adet</Text>
+                <Text style={[styles.totalLabel, { color: themeColors.textSecondary }]}>Toplam Sepet</Text>
                 <Text style={[styles.totalValue, { color: themeColors.text }]}>
                   {activeGroupItems.reduce((sum, item) => sum + item.quantity, 0)} Ürün
                 </Text>
@@ -392,14 +379,14 @@ export default function WishlistScreen() {
                 onPress={() => router.push('/compare')}
                 style={[styles.compareActionBtn, { backgroundColor: themeColors.accent }]}
               >
-                <Text style={styles.compareActionText}>Fiyatları Karşılaştır</Text>
+                <Text style={styles.compareActionText}>En Ucuz Mağazayı Bul</Text>
                 <ShoppingCart color="#FFF" size={16} style={{ marginLeft: 4 }} />
               </Pressable>
             </View>
           </View>
         )}
 
-        {/* NEW WATCHLIST GROUP CREATION MODAL */}
+        {/* NEW LIST GROUP CREATION MODAL */}
         <Modal visible={showGroupModal} transparent animationType="fade" onRequestClose={() => setShowGroupModal(false)}>
           <View style={styles.modalOverlayGroup}>
             <View style={[styles.modalContainerGroup, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}>
@@ -455,7 +442,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   countText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   // Watchlist groups
@@ -502,7 +489,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginLeft: 4,
   },
-  // Add Asset Section
+  // Add Section
   addSection: {
     marginHorizontal: Spacing.three,
     marginBottom: Spacing.two,
@@ -549,11 +536,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  searchResultSymbol: {
-    fontSize: 12,
-    fontWeight: '800',
-    width: 70,
-  },
   searchResultName: {
     fontSize: 12,
     flex: 1,
@@ -569,98 +551,97 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
-  // Stock Cards
+  // Cart cards
   listContainer: {
     paddingHorizontal: Spacing.three,
   },
-  stockCard: {
+  cartCard: {
     borderRadius: 16,
     borderWidth: 1,
     overflow: 'hidden',
   },
-  stockItem: {
+  cartItemRow: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: Spacing.three,
   },
-  stockLeft: {
-    flex: 1,
-    marginRight: Spacing.two,
-  },
-  stockSymbolRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  stockSymbol: {
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  brandBadge: {
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 4,
-    borderWidth: 0.5,
-  },
-  brandBadgeText: {
-    fontSize: 8,
-    fontWeight: '800',
-  },
-  stockName: {
-    fontSize: 11,
-    marginTop: 2,
-  },
-  stockCenter: {
-    alignItems: 'flex-end',
-    width: 75,
-    marginRight: Spacing.two,
-  },
-  stockPrice: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  changeBadge: {
+  thumbnailWrapper: {
+    width: 60,
+    height: 60,
+    borderRadius: 10,
+    backgroundColor: '#FFF',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 4,
-    marginTop: 3,
+    overflow: 'hidden',
+    marginRight: Spacing.three,
   },
-  changeText: {
-    fontSize: 9,
+  thumbnailImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'contain',
+  },
+  detailsColumn: {
+    flex: 1,
+    justifyContent: 'center',
+    marginRight: Spacing.two,
+  },
+  itemBrand: {
+    fontSize: 8,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  itemName: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
+    marginTop: 4,
+  },
+  itemPrice: {
+    fontSize: 13,
     fontWeight: '800',
   },
-  quantityContainer: {
+  storeIndicator: {
+    fontSize: 9,
+    fontWeight: '500',
+  },
+  actionsColumn: {
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    height: 60,
+  },
+  deleteBtn: {
+    padding: 2,
+  },
+  quantityWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginLeft: 6,
   },
-  quantityBtn: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+  qtyButton: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  quantityBtnText: {
-    fontSize: 12,
+  qtyButtonText: {
+    fontSize: 11,
     fontWeight: '700',
   },
-  quantityText: {
+  qtyText: {
     fontSize: 12,
     fontWeight: '800',
-    minWidth: 14,
+    minWidth: 16,
     textAlign: 'center',
   },
-  deleteBtn: {
-    padding: 6,
-    marginLeft: 6,
-  },
-  // Notes Subrow
-  noteRow: {
+  // Notes
+  noteSection: {
     borderTopWidth: 1,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two - 2,
@@ -718,7 +699,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   totalValue: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     marginTop: 2,
   },
@@ -745,7 +726,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   emptyTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
   },
   emptySubtitle: {

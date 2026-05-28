@@ -10,25 +10,24 @@ import {
   Platform,
   useColorScheme,
   Linking,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { 
   Check, 
   AlertTriangle, 
   TrendingDown, 
-  ArrowRight, 
-  ShoppingBag, 
-  Split, 
+  ChevronRight,
   Store,
   Sparkles,
-  ChevronRight,
-  TrendingUp,
-  Activity
+  Split,
+  ShoppingBag,
+  Info
 } from 'lucide-react-native';
 
 import { Colors, Spacing, BottomTabInset } from '@/constants/theme';
-import { useWishlist, WishlistItem } from '@/context/WishlistContext';
-import { STORE_NAMES, StorePrices, Product } from '@/constants/mockData';
+import { useWishlist } from '@/context/WishlistContext';
+import { STORE_NAMES, StorePrices } from '@/constants/mockData';
 
 interface StoreResult {
   storeKey: keyof StorePrices;
@@ -45,7 +44,7 @@ export default function CompareScreen() {
   
   const router = useRouter();
   const { items } = useWishlist();
-  const [activeTab, setActiveTab] = useState<'store' | 'split'>('store'); // 'store' = single store, 'split' = split basket
+  const [activeTab, setActiveTab] = useState<'store' | 'split'>('store');
 
   const openStoreUrl = (storeKey: string, brand: string, name: string) => {
     const query = `${brand} ${name}`;
@@ -78,9 +77,14 @@ export default function CompareScreen() {
     Linking.openURL(url).catch((err) => console.error("URL açma hatası:", err));
   };
 
-  // Total items in wishlist (sum of quantities)
+  // Total items in wishlist
   const totalQuantity = useMemo(() => {
     return items.reduce((sum, item) => sum + item.quantity, 0);
+  }, [items]);
+
+  // Unique products count
+  const totalItemsCount = useMemo(() => {
+    return items.length;
   }, [items]);
 
   // Compare results by single store
@@ -117,9 +121,9 @@ export default function CompareScreen() {
     // Sort by: 1. Max availability, 2. Cheapest price
     return results.sort((a, b) => {
       if (a.availableCount !== b.availableCount) {
-        return b.availableCount - a.availableCount; // More available first
+        return b.availableCount - a.availableCount;
       }
-      return a.totalPrice - b.totalPrice; // Cheaper first
+      return a.totalPrice - b.totalPrice;
     });
   }, [items, totalQuantity]);
 
@@ -171,43 +175,42 @@ export default function CompareScreen() {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
         <View style={styles.header}>
-          <Text style={[styles.titleText, { color: themeColors.text }]}>Analiz & Arbitraj</Text>
+          <Text style={[styles.titleText, { color: themeColors.text }]}>Sepet Karşılaştırma</Text>
         </View>
         
         <View style={styles.emptyContainer}>
           <View style={[styles.emptyIconContainer, { backgroundColor: themeColors.backgroundElement }]}>
-            <Activity color={themeColors.accent} size={48} />
+            <ShoppingBag color={themeColors.accent} size={42} />
           </View>
-          <Text style={[styles.emptyTitle, { color: themeColors.text }]}>Karşılaştırılacak Varlık Yok</Text>
+          <Text style={[styles.emptyTitle, { color: themeColors.text }]}>Sepetiniz Boş</Text>
           <Text style={[styles.emptySubtitle, { color: themeColors.textSecondary }]}>
-            Mağazalar arası fiyat arbitrajı yapabilmek için öncelikle izleme listenize (watchlist) ürün eklemelisiniz.
+            Mağazalar arası fiyat karşılaştırması ve akıllı sepet analizi yapabilmek için öncelikle listenize ürün eklemelisiniz.
           </Text>
           <Pressable 
             onPress={() => router.push('/')}
             style={[styles.exploreButton, { backgroundColor: themeColors.primary }]}
           >
-            <Sparkles color="#4A3538" size={18} />
-            <Text style={styles.exploreButtonText}>Borsaya Git & Ürün Ekle</Text>
+            <Sparkles color="#4A3538" size={16} />
+            <Text style={styles.exploreButtonText}>Ürünleri İncele & Ekle</Text>
           </Pressable>
         </View>
       </SafeAreaView>
     );
   }
 
-  // Cheapest single store index 0 (since sorted)
   const cheapestSingleStore = storeComparison[0];
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={[styles.titleText, { color: themeColors.text }]}>Fiyat Arbitraj Analizi</Text>
+        <Text style={[styles.titleText, { color: themeColors.text }]}>Mağaza Karşılaştırma</Text>
         <Text style={[styles.countText, { color: themeColors.textSecondary }]}>
-          {totalQuantity} Varlık Portföyü
+          {totalItemsCount} Farklı Ürün ({totalQuantity} Adet)
         </Text>
       </View>
 
-      {/* Tabs / Toggle Segment in Borsa style */}
+      {/* Tabs */}
       <View style={[styles.segmentContainer, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}>
         <Pressable
           onPress={() => setActiveTab('store')}
@@ -218,7 +221,7 @@ export default function CompareScreen() {
         >
           <Store color={activeTab === 'store' ? themeColors.accent : themeColors.textSecondary} size={15} />
           <Text style={[styles.segmentText, { color: activeTab === 'store' ? themeColors.text : themeColors.textSecondary }]}>
-            Tek Mağaza Endeksi
+            Tek Mağaza Sepeti
           </Text>
         </Pressable>
         <Pressable
@@ -236,7 +239,7 @@ export default function CompareScreen() {
       </View>
 
       {activeTab === 'store' ? (
-        /* SINGLE STORE COMPARISON LIST (STOCK ROWS STYLE) */
+        /* SINGLE STORE COMPARISON LIST */
         <FlatList
           data={storeComparison}
           keyExtractor={(item) => item.storeKey}
@@ -245,17 +248,17 @@ export default function CompareScreen() {
           ListHeaderComponent={
             <View style={[styles.summaryCard, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}>
               <View style={[styles.summaryBadge, { backgroundColor: themeColors.primary }]}>
-                <TrendingDown color="#4A3538" size={14} />
-                <Text style={styles.summaryBadgeText}>En Hesaplı Tek Endeks</Text>
+                <TrendingDown color="#4A3538" size={12} />
+                <Text style={styles.summaryBadgeText}>En Ucuz Tek Mağaza</Text>
               </View>
               <Text style={[styles.summaryTitle, { color: themeColors.text }]}>
-                {cheapestSingleStore.storeName} Portföyü
+                {cheapestSingleStore.storeName} Sepeti
               </Text>
               <Text style={[styles.summaryDesc, { color: themeColors.textSecondary }]}>
-                Sepetinizdeki ürünlerin tamamını tek bir mağazadan en makul fiyatla alabileceğiniz en uygun alternatif.
+                Listenizdeki tüm ürünleri tek bir mağazadan sipariş etmek isterseniz en uygun alternatifiniz.
               </Text>
               <View style={styles.summaryPriceRow}>
-                <Text style={[styles.summaryPriceLabel, { color: themeColors.textSecondary }]}>Toplam Endeks Fiyatı:</Text>
+                <Text style={[styles.summaryPriceLabel, { color: themeColors.textSecondary }]}>Toplam Sepet Tutarı:</Text>
                 <Text style={[styles.summaryPrice, { color: themeColors.text }]}>
                   ₺{cheapestSingleStore.totalPrice.toLocaleString('tr-TR')}
                 </Text>
@@ -265,8 +268,6 @@ export default function CompareScreen() {
           renderItem={({ item, index }) => {
             const isCheapest = index === 0 && item.availableCount === totalQuantity;
             const hasMissing = item.availableCount < totalQuantity;
-            
-            // Calculate percentage difference compared to cheapest single store
             const percentageDiff = cheapestSingleStore.totalPrice > 0 
               ? ((item.totalPrice - cheapestSingleStore.totalPrice) / cheapestSingleStore.totalPrice) * 100
               : 0;
@@ -295,12 +296,11 @@ export default function CompareScreen() {
                   <View style={styles.availabilityRow}>
                     <Check color={hasMissing ? themeColors.warning : themeColors.success} size={12} />
                     <Text style={[styles.availabilityText, { color: themeColors.textSecondary }]}>
-                      {item.availableCount}/{item.totalCount} Varlık Mevcut
+                      {item.availableCount}/{item.totalCount} Ürün Mevcut
                     </Text>
                   </View>
                 </View>
 
-                {/* Right Column: Price & Delta % change */}
                 <View style={styles.storePriceInfo}>
                   <Text style={[styles.storePriceText, { color: themeColors.text }]}>
                     {item.totalPrice > 0 ? `₺${item.totalPrice.toLocaleString('tr-TR')}` : 'Fiyat Yok'}
@@ -309,14 +309,15 @@ export default function CompareScreen() {
                   {hasMissing ? (
                     <View style={[styles.missingBadge, { backgroundColor: themeColors.danger + '15' }]}>
                       <AlertTriangle color={themeColors.danger} size={10} />
-                      <Text style={[styles.missingBadgeText, { color: themeColors.danger }]}>{item.missingItems.length} Eksik</Text>
+                      <Text style={[styles.missingBadgeText, { color: themeColors.danger }]}>
+                        {item.missingItems.length} Ürün Eksik
+                      </Text>
                     </View>
                   ) : (
                     index > 0 && (
                       <View style={[styles.deltaBadge, { backgroundColor: themeColors.danger + '15' }]}>
-                        <TrendingUp color={themeColors.danger} size={10} />
                         <Text style={[styles.deltaText, { color: themeColors.danger }]}>
-                          +{percentageDiff.toFixed(1)}%
+                          +{percentageDiff.toFixed(1)}% makas
                         </Text>
                       </View>
                     )
@@ -327,7 +328,7 @@ export default function CompareScreen() {
           }}
         />
       ) : (
-        /* SMART SPLIT BASKET LIST (ARBITRAGE BASKET) */
+        /* SMART SPLIT BASKET LIST */
         splitBasket && (
           <FlatList
             data={splitBasket.items}
@@ -338,27 +339,27 @@ export default function CompareScreen() {
               <View style={[styles.splitSummaryCard, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.accent, borderWidth: 1 }]}>
                 <View style={styles.summaryBadgeRow}>
                   <View style={[styles.splitBadge, { backgroundColor: themeColors.accent }]}>
-                    <Split color="#FFF" size={14} />
-                    <Text style={styles.splitBadgeText}>Bölünmüş Arbitraj Portföyü</Text>
+                    <Split color="#FFF" size={12} />
+                    <Text style={styles.splitBadgeText}>Akıllı Optimize Sepet</Text>
                   </View>
                   {splitBasket.savings > 0 && (
                     <View style={[styles.savingsBadge, { backgroundColor: themeColors.success }]}>
                       <Text style={styles.savingsBadgeText}>
-                        ₺{splitBasket.savings.toLocaleString('tr-TR')} Tasarruf!
+                        ₺{splitBasket.savings.toLocaleString('tr-TR')} Cepte!
                       </Text>
                     </View>
                   )}
                 </View>
                 <Text style={[styles.splitSummaryTitle, { color: themeColors.text }]}>
-                  Akıllı Bölünmüş Arbitraj
+                  Bölünmüş Sipariş Planı
                 </Text>
                 <Text style={[styles.splitSummaryDesc, { color: themeColors.textSecondary }]}>
-                  Her bir makyaj hissesini en düşük fiyata sunan mağazadan ayrı ayrı satın alarak elde edebileceğiniz maksimum kazanç planı.
+                  Listenizdeki her makyaj ürününü en ucuz olduğu mağazadan ayrı ayrı satın alarak sağlayacağınız maksimum tasarruf planı.
                 </Text>
                 
                 <View style={styles.splitPriceRow}>
                   <View>
-                    <Text style={[styles.splitPriceLabel, { color: themeColors.textSecondary }]}>Optimize Toplam:</Text>
+                    <Text style={[styles.splitPriceLabel, { color: themeColors.textSecondary }]}>Optimize Toplam Tutar:</Text>
                     <Text style={[styles.splitPrice, { color: themeColors.text }]}>
                       ₺{splitBasket.totalPrice.toLocaleString('tr-TR')}
                     </Text>
@@ -366,7 +367,7 @@ export default function CompareScreen() {
                   <View style={styles.arrowCompareContainer}>
                     {cheapestSingleStore && (
                       <Text style={[styles.oldPriceText, { color: themeColors.textSecondary }]}>
-                        Tek Mağazadan En Ucuz: ₺{cheapestSingleStore.totalPrice.toLocaleString('tr-TR')}
+                        Tek Mağaza Fiyatı: ₺{cheapestSingleStore.totalPrice.toLocaleString('tr-TR')}
                       </Text>
                     )}
                   </View>
@@ -386,23 +387,29 @@ export default function CompareScreen() {
               >
                 <View style={styles.splitItemLeft}>
                   <View style={styles.splitItemHeader}>
-                    <Text style={[styles.splitItemSymbol, { color: themeColors.text }]}>
-                      {item.product.symbol}
-                    </Text>
-                    <View style={[styles.splitStoreBadge, { backgroundColor: themeColors.primary }]}>
-                      <Text style={styles.splitStoreBadgeText}>{item.cheapestStoreName}</Text>
+                    {/* Visual Product Image Thumbnail */}
+                    <Image source={{ uri: item.product.image }} style={styles.splitItemThumbnail} />
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={[styles.splitItemBrand, { color: themeColors.textSecondary }]} numberOfLines={1}>
+                          {item.product.brand}
+                        </Text>
+                        <View style={[styles.splitStoreBadge, { backgroundColor: themeColors.primary }]}>
+                          <Text style={styles.splitStoreBadgeText}>{item.cheapestStoreName}</Text>
+                        </View>
+                      </View>
+                      <Text numberOfLines={1} style={[styles.splitItemName, { color: themeColors.text }]}>
+                        {item.product.name}
+                      </Text>
                     </View>
                   </View>
-                  <Text numberOfLines={1} style={[styles.splitItemName, { color: themeColors.textSecondary }]}>
-                    {item.product.brand} {item.product.name}
-                  </Text>
-                  <Text style={[styles.splitItemQty, { color: themeColors.textSecondary }]}>
-                    Lot Adedi: {item.quantity} · Lot Birim Fiyatı: ₺{item.cheapestPrice.toFixed(2)}
+                  <Text style={[styles.splitItemQtyText, { color: themeColors.textSecondary }]}>
+                    Adet: {item.quantity} · Birim: ₺{item.cheapestPrice.toFixed(1)}
                   </Text>
                 </View>
                 <View style={styles.splitItemRight}>
                   <Text style={[styles.splitItemPrice, { color: themeColors.text }]}>
-                    ₺{item.itemTotal.toFixed(2)}
+                    ₺{item.itemTotal.toFixed(1)}
                   </Text>
                   <ChevronRight size={14} color={themeColors.textSecondary} />
                 </View>
@@ -433,7 +440,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   countText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   segmentContainer: {
@@ -466,7 +473,7 @@ const styles = StyleSheet.create({
   summaryCard: {
     borderRadius: 18,
     borderWidth: 1,
-    padding: Spacing.three + 2,
+    padding: Spacing.three,
     marginBottom: Spacing.three,
     gap: 4,
   },
@@ -476,7 +483,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 3,
     paddingHorizontal: Spacing.two,
-    borderRadius: 10,
+    borderRadius: 8,
     gap: 4,
     marginBottom: 4,
   },
@@ -517,7 +524,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three - 2,
+    paddingVertical: Spacing.three,
     borderRadius: 16,
   },
   storeMainInfo: {
@@ -550,7 +557,7 @@ const styles = StyleSheet.create({
   },
   availabilityText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   storePriceInfo: {
     alignItems: 'flex-end',
@@ -575,7 +582,6 @@ const styles = StyleSheet.create({
   deltaBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
     paddingHorizontal: 5,
     paddingVertical: 1,
     borderRadius: 4,
@@ -584,10 +590,9 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '800',
   },
-  // Split Summary Card
   splitSummaryCard: {
     borderRadius: 18,
-    padding: Spacing.three + 2,
+    padding: Spacing.three,
     marginBottom: Spacing.three,
     gap: 4,
   },
@@ -602,7 +607,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 3,
     paddingHorizontal: Spacing.two,
-    borderRadius: 10,
+    borderRadius: 8,
     gap: 4,
   },
   splitBadgeText: {
@@ -614,7 +619,7 @@ const styles = StyleSheet.create({
   savingsBadge: {
     paddingVertical: 3,
     paddingHorizontal: Spacing.two,
-    borderRadius: 10,
+    borderRadius: 8,
   },
   savingsBadgeText: {
     color: '#FFF',
@@ -656,7 +661,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textDecorationLine: 'line-through',
   },
-  // Split Row items
+  // Split items
   splitItemRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -672,14 +677,22 @@ const styles = StyleSheet.create({
   splitItemHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 10,
   },
-  splitItemSymbol: {
-    fontSize: 13,
-    fontWeight: '800',
+  splitItemThumbnail: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+    resizeMode: 'contain',
+    backgroundColor: '#FFF',
+  },
+  splitItemBrand: {
+    fontSize: 9,
+    fontWeight: '700',
+    textTransform: 'uppercase',
   },
   splitStoreBadge: {
-    paddingHorizontal: 5,
+    paddingHorizontal: 4,
     paddingVertical: 1,
     borderRadius: 4,
   },
@@ -689,13 +702,14 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   splitItemName: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
-    marginTop: 3,
-  },
-  splitItemQty: {
-    fontSize: 10,
     marginTop: 2,
+  },
+  splitItemQtyText: {
+    fontSize: 10,
+    marginTop: 4,
+    marginLeft: 42, // offset for thumbnail align
   },
   splitItemRight: {
     flexDirection: 'row',
@@ -703,7 +717,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   splitItemPrice: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
   },
   // Empty states

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -13,8 +13,7 @@ import {
   SafeAreaView,
   Platform,
   useColorScheme,
-  ActivityIndicator,
-  RefreshControl,
+  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { 
@@ -27,15 +26,14 @@ import {
   Check, 
   AlertCircle,
   TrendingDown,
-  TrendingUp,
   Layers,
-  ChevronDown,
-  ChevronUp,
-  HelpCircle,
+  ChevronRight,
   ShoppingCart,
-  PlusCircle,
+  Smile,
   Bookmark,
-  Smile
+  HelpCircle,
+  Percent,
+  Compass
 } from 'lucide-react-native';
 
 import { Colors, Spacing, BottomTabInset } from '@/constants/theme';
@@ -44,28 +42,39 @@ import {
   CATEGORIES, 
   Product, 
   getCategoryImage, 
-  getMarketIndices, 
-  MarketIndex,
   getProductSymbol
 } from '@/constants/mockData';
 import { useWishlist } from '@/context/WishlistContext';
-import packageJson from '../../package.json';
 
 const { width } = Dimensions.get('window');
-const COLUMN_COUNT = 1; // Stock-market style table layout is single-column
+const CARD_WIDTH = 150;
 
-// Popular brands list for simulation and lookup
-const POPULAR_BRANDS_LIST = [
-  'Maybelline New York', 'L\'Oreal Paris', 'NYX Professional Makeup', 'Pastel', 
-  'Flormar', 'Golden Rose', 'Kiko Milano', 'Mac', 'Sephora Collection', 
-  'Clinique', 'Dior', 'NARS', 'The Ordinary', 'Yves Rocher', 'Estee Lauder', 
-  'Lancome', 'Shiseido', 'Revolution', 'Wet n Wild', 'Essence', 'Benefit Cosmetics',
-  'Fenty Beauty', 'Charlotte Tilbury', 'Too Faced', 'Huda Beauty', 'Bobbi Brown',
-  'Anastasia Beverly Hills', 'Urban Decay', 'Clarins', 'Note Cosmetique', 'Beaulis',
-  'Mara Cosmetics', 'Gabrini', 'Farmasi', 'Kryolan', 'L\'Occitane'
+const CAMPAIGNS = [
+  {
+    id: 'camp-1',
+    title: 'Gratis Bahar Fırsatları',
+    desc: 'Makyaj markalarında net %50 indirim.',
+    badge: 'KAMPANYA',
+    bg: '#FFF0F2',
+    border: '#FFD1DC',
+  },
+  {
+    id: 'camp-2',
+    title: 'Akıllı Bölünmüş Sepet',
+    desc: 'Ürünleri en ucuz mağazalardan eş zamanlı alın.',
+    badge: 'ÖNERİ',
+    bg: '#F5EFFF',
+    border: '#E0CCFF',
+  },
+  {
+    id: 'camp-3',
+    title: 'Rossmann Hafta Sonu İndirimi',
+    desc: 'Özel serilerde sepette ek %15 makas avantajı.',
+    badge: 'HAFTALIK',
+    bg: '#EAF8FF',
+    border: '#C2E5FF',
+  }
 ];
-
-type MarketTab = 'bist' | 'brand' | 'category' | 'opportunity';
 
 export default function HomeScreen() {
   const scheme = useColorScheme();
@@ -74,69 +83,61 @@ export default function HomeScreen() {
   const router = useRouter();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
 
-  // Navigation and Tab states
-  const [activeTab, setActiveTab] = useState<MarketTab>('bist');
+  // Search and Filter states
   const [searchQuery, setSearchQuery] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
-  
-  // Sort states
-  const [sortBy, setSortBy] = useState<'symbol' | 'discount' | 'reviews' | 'priceUp' | 'priceDown'>('symbol');
-  const [showSortMenu, setShowSortMenu] = useState(false);
 
-  // Modals state
+  // Custom Product modal state
   const [modalVisible, setModalVisible] = useState(false);
   const [customName, setCustomName] = useState('');
   const [customBrand, setCustomBrand] = useState('');
   const [customCategory, setCustomCategory] = useState('ruj');
 
-  // Infinite Scroll limit
-  const [visibleLimit, setVisibleLimit] = useState(25);
-
-  // Live indices state
-  const [indices, setIndices] = useState<MarketIndex[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
-
-  // Fetch indices and refresh lists
-  const handleRefresh = () => {
-    setRefreshing(true);
-    setIndices(getMarketIndices());
-    setTimeout(() => setRefreshing(false), 800);
-  };
-
-  useEffect(() => {
-    setIndices(getMarketIndices());
+  // Load all simulated products
+  const allProducts = useMemo(() => {
+    return searchAndSimulateProducts('', 'all');
   }, []);
 
-  // Reset lazy load limit when filters change
-  useEffect(() => {
-    setVisibleLimit(25);
-  }, [searchQuery, selectedCategory, selectedBrand, activeTab, sortBy]);
-
-  // Caching filtered list to avoid performance drops
-  const baseProducts = useMemo(() => {
-    return searchAndSimulateProducts(searchQuery, 'all');
-  }, [searchQuery]);
-
-  // Filter products based on active tab and category/brand filters
+  // Filtered products list for general grid / category filtering
   const filteredProducts = useMemo(() => {
-    let list = [...baseProducts];
-
-    // Under BIST tab, filter by selected category and brand
-    if (activeTab === 'bist') {
-      if (selectedCategory !== 'all') {
-        list = list.filter(p => p.category === selectedCategory);
-      }
-      if (selectedBrand) {
-        list = list.filter(p => p.brand.toLowerCase() === selectedBrand.toLowerCase());
-      }
-    } else if (activeTab === 'opportunity') {
-      // Opportunities tab: filter only discounted products (change < 0)
-      list = list.filter(p => p.change < 0);
+    let list = [...allProducts];
+    if (selectedCategory !== 'all') {
+      list = list.filter(p => p.category === selectedCategory);
     }
-
+    if (searchQuery.trim().length > 0) {
+      list = list.filter(p => 
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.symbol.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
     return list;
-  }, [baseProducts, selectedCategory, selectedBrand, activeTab]);
+  }, [allProducts, selectedCategory, searchQuery]);
+
+  // Suggestions search list
+  const suggestions = useMemo(() => {
+    if (searchQuery.trim().length === 0) return [];
+    return allProducts.filter(p => 
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.brand.toLowerCase().includes(searchQuery.toLowerCase())
+    ).slice(0, 5);
+  }, [allProducts, searchQuery]);
+
+  // Günün Fırsatları: Ortalama fiyat düşüşü (change < 0) olan en yüksek indirimliler
+  const dealsOfDay = useMemo(() => {
+    return allProducts
+      .filter(p => p.change < 0)
+      .sort((a, b) => a.change - b.change)
+      .slice(0, 8);
+  }, [allProducts]);
+
+  // Popüler Ürünler: Yorum sayısı (reviewsCount) en yüksek olanlar
+  const popularProducts = useMemo(() => {
+    return allProducts
+      .sort((a, b) => b.reviewsCount - a.reviewsCount)
+      .slice(0, 8);
+  }, [allProducts]);
 
   // Find cheapest price helper
   const getCheapestPriceInfo = (prices: Product['prices']) => {
@@ -168,123 +169,20 @@ export default function HomeScreen() {
     };
   };
 
-  // Sort products
-  const sortedProducts = useMemo(() => {
-    return [...filteredProducts].sort((a, b) => {
-      const aCheapest = getCheapestPriceInfo(a.prices)?.price || 0;
-      const bCheapest = getCheapestPriceInfo(b.prices)?.price || 0;
-
-      switch (sortBy) {
-        case 'discount':
-          // Sort by highest discount (most negative change first)
-          return a.change - b.change;
-        case 'reviews':
-          return b.reviewsCount - a.reviewsCount;
-        case 'priceUp':
-          return aCheapest - bCheapest;
-        case 'priceDown':
-          return bCheapest - aCheapest;
-        default:
-          // A-Z symbol sort
-          return a.symbol.localeCompare(b.symbol);
-      }
-    });
-  }, [filteredProducts, sortBy]);
-
-  const displayedProducts = useMemo(() => {
-    return sortedProducts.slice(0, visibleLimit);
-  }, [sortedProducts, visibleLimit]);
-
-  // Compute Brand Index Values (dynamic list of brands and average prices)
-  const brandIndices = useMemo(() => {
-    const list: { brand: string; symbol: string; value: number; change: number; count: number }[] = [];
-    
-    POPULAR_BRANDS_LIST.forEach((br, index) => {
-      const brandProducts = baseProducts.filter(p => p.brand.toLowerCase().includes(br.toLowerCase()));
-      if (brandProducts.length === 0) return;
-
-      let sumCheapest = 0;
-      let sumChange = 0;
-      let count = 0;
-
-      brandProducts.forEach(p => {
-        const cheapest = getCheapestPriceInfo(p.prices)?.price;
-        if (cheapest) {
-          sumCheapest += cheapest;
-          sumChange += p.change;
-          count++;
-        }
-      });
-
-      if (count > 0) {
-        const cleanBrand = br.replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase();
-        list.push({
-          brand: br,
-          symbol: `${cleanBrand}X`,
-          value: parseFloat((sumCheapest / count).toFixed(2)),
-          change: parseFloat((sumChange / count).toFixed(2)),
-          count,
-        });
-      }
-    });
-
-    // Sort by largest brand indexes
-    return list.sort((a, b) => b.count - a.count);
-  }, [baseProducts]);
-
-  // Compute Category Index Values
-  const categoryIndices = useMemo(() => {
-    const list: { categoryId: string; name: string; icon: string; value: number; change: number; count: number }[] = [];
-
-    CATEGORIES.forEach((cat) => {
-      if (cat.id === 'all') return;
-      const catProducts = baseProducts.filter(p => p.category === cat.id);
-      if (catProducts.length === 0) return;
-
-      let sumCheapest = 0;
-      let sumChange = 0;
-      let count = 0;
-
-      catProducts.forEach(p => {
-        const cheapest = getCheapestPriceInfo(p.prices)?.price;
-        if (cheapest) {
-          sumCheapest += cheapest;
-          sumChange += p.change;
-          count++;
-        }
-      });
-
-      if (count > 0) {
-        list.push({
-          categoryId: cat.id,
-          name: cat.name,
-          icon: cat.icon,
-          value: parseFloat((sumCheapest / count).toFixed(2)),
-          change: parseFloat((sumChange / count).toFixed(2)),
-          count,
-        });
-      }
-    });
-
-    return list;
-  }, [baseProducts]);
-
   const handleAddCustomProduct = () => {
     if (!customName.trim()) return;
     const basePrice = 120 + (Math.random() * 300);
     const roundPrice = (p: number) => Math.round(p / 5) * 5 - 0.1;
 
     const brandName = customBrand.trim() || 'Özel Marka';
-    const cleanBrand = brandName.replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase().padEnd(4, 'X');
-    const cleanName = customName.replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase().padEnd(4, 'X');
-    const newProductSymbol = `${cleanBrand}-${cleanName}`;
+    const newProductSymbol = getProductSymbol(brandName, customName.trim());
 
     const newProduct: Product = {
       id: `custom-${Date.now()}`,
       name: customName.trim(),
       brand: brandName,
       symbol: newProductSymbol,
-      change: -Math.floor(Math.random() * 20),
+      change: -Math.floor(Math.random() * 20) - 2,
       category: customCategory,
       image: getCategoryImage(customCategory),
       rating: 5.0,
@@ -308,127 +206,180 @@ export default function HomeScreen() {
     setModalVisible(false);
   };
 
-  const SORT_OPTIONS = [
-    { key: 'symbol' as const, label: 'A-Z Sembol', icon: Sparkles },
-    { key: 'discount' as const, label: 'En Yüksek İndirim', icon: TrendingDown },
-    { key: 'priceUp' as const, label: 'En Düşük Fiyat', icon: ChevronDown },
-    { key: 'priceDown' as const, label: 'En Yüksek Fiyat', icon: ChevronUp },
-    { key: 'reviews' as const, label: 'Popülerlik (Yorum)', icon: Heart },
-  ];
+  const getCategoryIcon = (catId: string, color: string, size: number) => {
+    switch (catId) {
+      case 'all': return <Sparkles color={color} size={size} />;
+      case 'ruj': return <Heart color={color} size={size} />;
+      case 'rimel': return <Eye color={color} size={size} />;
+      case 'kalem': return <Layers color={color} size={size} />;
+      case 'allik': return <Smile color={color} size={size} />;
+      case 'far': return <Bookmark color={color} size={size} />;
+      case 'oje': return <HelpCircle color={color} size={size} />;
+      case 'cilt': return <Compass color={color} size={size} />;
+      case 'sac': return <HelpCircle color={color} size={size} />;
+      default: return <Sparkles color={color} size={size} />;
+    }
+  };
 
-  const currentSort = SORT_OPTIONS.find(s => s.key === sortBy)!;
-
-  // Render borsa index cards at the top
-  const renderIndicesRow = () => (
-    <View style={[styles.indicesRow, { backgroundColor: themeColors.backgroundElement, borderBottomColor: themeColors.border }]}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.indicesScroll}>
-        {indices.map(idx => {
-          const isDrop = idx.change < 0;
-          return (
-            <View key={idx.symbol} style={[styles.indexCard, { backgroundColor: themeColors.background, borderColor: themeColors.border }]}>
-              <View style={styles.indexHeader}>
-                <Text style={[styles.indexName, { color: themeColors.textSecondary }]}>{idx.name}</Text>
-                <Text style={styles.indexSymbol}>{idx.symbol}</Text>
-              </View>
-              <Text style={[styles.indexValue, { color: themeColors.text }]}>
-                ₺{idx.value.toLocaleString('tr-TR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
-              </Text>
-              <View style={[styles.indexChangeBadge, { backgroundColor: isDrop ? themeColors.success + '15' : themeColors.danger + '15' }]}>
-                {isDrop ? (
-                  <TrendingDown size={10} color={themeColors.success} />
-                ) : (
-                  <TrendingUp size={10} color={themeColors.danger} />
-                )}
-                <Text style={[styles.indexChangeText, { color: isDrop ? themeColors.success : themeColors.danger }]}>
-                  %{Math.abs(idx.change).toFixed(2)}
-                </Text>
-              </View>
-            </View>
-          );
-        })}
-      </ScrollView>
-    </View>
-  );
-
-  // Render product item in borsa-takip style
-  const renderProductItem = ({ item }: { item: Product }) => {
+  // Render Horizontal Product Card
+  const renderHorizontalProductCard = (item: Product) => {
     const cheapest = getCheapestPriceInfo(item.prices);
     const inWatchlist = isInWishlist(item.id);
-    const isDrop = item.change < 0;
+    const discountPercent = Math.abs(Math.round(item.change));
+    const isDiscounted = item.change < 0;
+
+    // Calculate original price roughly if discounted
+    const originalPrice = cheapest ? (cheapest.price / (1 - discountPercent / 100)) : 0;
 
     return (
-      <Pressable 
+      <Pressable
+        key={item.id}
         onPress={() => router.push({ pathname: '/product/[id]', params: { id: item.id } })}
-        style={({ pressed }) => [
-          styles.stockItem, 
-          { 
-            backgroundColor: pressed ? themeColors.backgroundSelected : themeColors.backgroundElement,
-            borderBottomColor: themeColors.border
-          }
-        ]}
+        style={[styles.horizontalCard, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}
       >
-        {/* Left Column: Ticker & Brand */}
-        <View style={styles.stockLeft}>
-          <View style={styles.stockSymbolRow}>
-            <Text style={[styles.stockSymbol, { color: themeColors.text }]}>{item.symbol}</Text>
-            <View style={[styles.brandBadge, { backgroundColor: themeColors.primary + '20', borderColor: themeColors.primary }]}>
-              <Text style={[styles.brandBadgeText, { color: themeColors.accent }]}>{item.brand.split(' ')[0]}</Text>
-            </View>
-          </View>
-          <Text numberOfLines={1} style={[styles.stockName, { color: themeColors.textSecondary }]}>
-            {item.name}
-          </Text>
-        </View>
-
-        {/* Center Column: Price & Store */}
-        <View style={styles.stockCenter}>
-          {cheapest ? (
-            <>
-              <Text style={[styles.stockPrice, { color: themeColors.text }]}>
-                ₺{cheapest.price.toLocaleString('tr-TR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
-              </Text>
-              <Text style={[styles.stockStore, { color: themeColors.textSecondary }]}>
-                {cheapest.store}
-              </Text>
-            </>
-          ) : (
-            <Text style={[styles.stockPrice, { color: themeColors.textSecondary }]}>Fiyat Yok</Text>
-          )}
-        </View>
-
-        {/* Right Column: Discount Change Badge */}
-        <View style={styles.stockRight}>
-          <View style={[styles.changeBadge, { backgroundColor: isDrop ? themeColors.success + '20' : themeColors.danger + '20' }]}>
-            <Text style={[styles.changeText, { color: isDrop ? themeColors.success : themeColors.danger }]}>
-              {isDrop ? '' : '+'}{item.change.toFixed(1)}%
-            </Text>
-          </View>
-        </View>
-
-        {/* Watchlist toggle action */}
+        {/* Wishlist toggle badge */}
         <Pressable
           onPress={() => {
             if (inWatchlist) {
               removeFromWishlist(item.id);
             } else {
-              addToWishlist(item, 'BIST Makyaj Listesinden Takip');
+              addToWishlist(item, 'Hızlı Karşılaştırma Ekle');
             }
           }}
-          style={styles.actionIcon}
+          style={styles.cardHeartIcon}
         >
-          <Eye size={18} color={inWatchlist ? themeColors.accent : themeColors.textSecondary} fill={inWatchlist ? themeColors.accent + '30' : 'transparent'} />
+          <Heart 
+            size={14} 
+            color={inWatchlist ? themeColors.accent : themeColors.textSecondary} 
+            fill={inWatchlist ? themeColors.accent : 'transparent'} 
+          />
         </Pressable>
 
-        {/* Compare / Cart Action */}
-        <Pressable
-          onPress={() => router.push({ pathname: '/product/[id]', params: { id: item.id } })}
-          style={styles.actionIcon}
-        >
-          <ShoppingCart size={18} color={themeColors.accent} />
-        </Pressable>
+        <View style={styles.cardImageWrapper}>
+          <Image source={{ uri: item.image }} style={styles.cardImage} />
+        </View>
+
+        <View style={styles.cardBody}>
+          <Text style={[styles.cardBrand, { color: themeColors.textSecondary }]} numberOfLines={1}>
+            {item.brand.toUpperCase()}
+          </Text>
+          <Text style={[styles.cardTitleText, { color: themeColors.text }]} numberOfLines={1}>
+            {item.name}
+          </Text>
+
+          <View style={styles.cardRatingRow}>
+            <Sparkles size={8} color="#F2CC8F" />
+            <Text style={[styles.cardRatingText, { color: themeColors.textSecondary }]}>
+              {item.rating.toFixed(1)} ({item.reviewsCount})
+            </Text>
+          </View>
+
+          {cheapest ? (
+            <View style={styles.cardPriceSection}>
+              {isDiscounted && (
+                <View style={styles.originalPriceRow}>
+                  <Text style={[styles.cardOriginalPrice, { color: themeColors.textSecondary }]}>
+                    ₺{Math.round(originalPrice)}
+                  </Text>
+                  <View style={[styles.cardDiscountBadge, { backgroundColor: themeColors.success }]}>
+                    <Text style={styles.cardDiscountBadgeText}>%{discountPercent}</Text>
+                  </View>
+                </View>
+              )}
+              <Text style={[styles.cardCheapestPrice, { color: themeColors.text }]}>
+                ₺{cheapest.price.toFixed(1)}
+              </Text>
+              <Text style={[styles.cardCheapestStore, { color: themeColors.accent }]} numberOfLines={1}>
+                {cheapest.store}'de en ucuz
+              </Text>
+            </View>
+          ) : (
+            <Text style={[styles.cardNoPrice, { color: themeColors.textSecondary }]}>Stokta Yok</Text>
+          )}
+        </View>
       </Pressable>
     );
   };
+
+  // Render Grid Product Card (2 Columns)
+  const renderGridProductCard = (item: Product) => {
+    const cheapest = getCheapestPriceInfo(item.prices);
+    const inWatchlist = isInWishlist(item.id);
+    const discountPercent = Math.abs(Math.round(item.change));
+    const isDiscounted = item.change < 0;
+    const originalPrice = cheapest ? (cheapest.price / (1 - discountPercent / 100)) : 0;
+
+    return (
+      <Pressable
+        key={item.id}
+        onPress={() => router.push({ pathname: '/product/[id]', params: { id: item.id } })}
+        style={[styles.gridCard, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}
+      >
+        {/* Wishlist button */}
+        <Pressable
+          onPress={() => {
+            if (inWatchlist) {
+              removeFromWishlist(item.id);
+            } else {
+              addToWishlist(item, 'Grid Ürün Takip');
+            }
+          }}
+          style={styles.cardHeartIcon}
+        >
+          <Heart 
+            size={14} 
+            color={inWatchlist ? themeColors.accent : themeColors.textSecondary} 
+            fill={inWatchlist ? themeColors.accent : 'transparent'} 
+          />
+        </Pressable>
+
+        <View style={styles.gridImageWrapper}>
+          <Image source={{ uri: item.image }} style={styles.gridImage} />
+        </View>
+
+        <View style={styles.cardBody}>
+          <Text style={[styles.cardBrand, { color: themeColors.textSecondary }]} numberOfLines={1}>
+            {item.brand.toUpperCase()}
+          </Text>
+          <Text style={[styles.cardTitleText, { color: themeColors.text }]} numberOfLines={2}>
+            {item.name}
+          </Text>
+
+          <View style={styles.cardRatingRow}>
+            <Sparkles size={8} color="#F2CC8F" />
+            <Text style={[styles.cardRatingText, { color: themeColors.textSecondary }]}>
+              {item.rating.toFixed(1)} ({item.reviewsCount})
+            </Text>
+          </View>
+
+          {cheapest ? (
+            <View style={styles.cardPriceSection}>
+              {isDiscounted && (
+                <View style={styles.originalPriceRow}>
+                  <Text style={[styles.cardOriginalPrice, { color: themeColors.textSecondary }]}>
+                    ₺{Math.round(originalPrice)}
+                  </Text>
+                  <View style={[styles.cardDiscountBadge, { backgroundColor: themeColors.success }]}>
+                    <Text style={styles.cardDiscountBadgeText}>%{discountPercent}</Text>
+                  </View>
+                </View>
+              )}
+              <Text style={[styles.cardCheapestPrice, { color: themeColors.text }]}>
+                ₺{cheapest.price.toFixed(1)}
+              </Text>
+              <Text style={[styles.cardCheapestStore, { color: themeColors.accent }]}>
+                {cheapest.store}'de en ucuz
+              </Text>
+            </View>
+          ) : (
+            <Text style={[styles.cardNoPrice, { color: themeColors.textSecondary }]}>Stokta Yok</Text>
+          )}
+        </View>
+      </Pressable>
+    );
+  };
+
+  const hasSearch = searchQuery.trim().length > 0;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
@@ -436,306 +387,194 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <View>
           <Text style={[styles.logoText, { color: themeColors.text }]}>GlowPrice ✨</Text>
-          <Text style={[styles.subtitleText, { color: themeColors.textSecondary }]}>Makyaj Fiyat Karşılaştırma Borsası</Text>
+          <Text style={[styles.subtitleText, { color: themeColors.textSecondary }]}>En Uygun Fiyatı Süzün</Text>
         </View>
         <Pressable 
           onPress={() => setModalVisible(true)}
           style={[styles.addButton, { backgroundColor: themeColors.primary }]}
         >
-          <Plus color="#4A3538" size={18} />
-          <Text style={styles.addButtonText}>Hisse Ekle</Text>
+          <Plus color="#4A3538" size={16} />
+          <Text style={styles.addButtonText}>Ürün Ekle</Text>
         </Pressable>
       </View>
 
-      {/* Makyaj Endeksleri */}
-      {renderIndicesRow()}
+      {/* Prominent Search Bar */}
+      <View style={styles.searchSection}>
+        <View style={[styles.searchBarContainer, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}>
+          <Search color={themeColors.textSecondary} size={18} style={styles.searchIcon} />
+          <TextInput
+            placeholder="Ürün, marka veya kategori ara..."
+            placeholderTextColor={themeColors.textSecondary}
+            value={searchQuery}
+            onChangeText={(text) => {
+              setSearchQuery(text);
+              setShowSuggestions(text.length > 0);
+            }}
+            onFocus={() => setShowSuggestions(searchQuery.length > 0)}
+            style={[styles.searchInput, { color: themeColors.text }]}
+          />
+          {searchQuery.length > 0 && (
+            <Pressable onPress={() => {
+              setSearchQuery('');
+              setShowSuggestions(false);
+            }}>
+              <X color={themeColors.textSecondary} size={18} />
+            </Pressable>
+          )}
+        </View>
 
-      {/* Borsa Tabları */}
-      <View style={[styles.tabBar, { backgroundColor: themeColors.backgroundElement, borderBottomColor: themeColors.border }]}>
-        <Pressable
-          onPress={() => setActiveTab('bist')}
-          style={[styles.tabItem, activeTab === 'bist' && { borderBottomColor: themeColors.accent }]}
-        >
-          <Sparkles size={14} color={activeTab === 'bist' ? themeColors.accent : themeColors.textSecondary} />
-          <Text style={[styles.tabLabel, { color: activeTab === 'bist' ? themeColors.text : themeColors.textSecondary }]}>
-            BIST Makyaj
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setActiveTab('brand')}
-          style={[styles.tabItem, activeTab === 'brand' && { borderBottomColor: themeColors.accent }]}
-        >
-          <Smile size={14} color={activeTab === 'brand' ? themeColors.accent : themeColors.textSecondary} />
-          <Text style={[styles.tabLabel, { color: activeTab === 'brand' ? themeColors.text : themeColors.textSecondary }]}>
-            Markalar
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setActiveTab('category')}
-          style={[styles.tabItem, activeTab === 'category' && { borderBottomColor: themeColors.accent }]}
-        >
-          <Layers size={14} color={activeTab === 'category' ? themeColors.accent : themeColors.textSecondary} />
-          <Text style={[styles.tabLabel, { color: activeTab === 'category' ? themeColors.text : themeColors.textSecondary }]}>
-            Kategoriler
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setActiveTab('opportunity')}
-          style={[styles.tabItem, activeTab === 'opportunity' && { borderBottomColor: themeColors.accent }]}
-        >
-          <TrendingDown size={14} color={activeTab === 'opportunity' ? themeColors.accent : themeColors.textSecondary} />
-          <Text style={[styles.tabLabel, { color: activeTab === 'opportunity' ? themeColors.text : themeColors.textSecondary }]}>
-            Fırsatlar
-          </Text>
-        </Pressable>
-      </View>
-
-      {/* SEARCH AND SORT BAR */}
-      {activeTab === 'bist' && (
-        <View style={styles.filterSection}>
-          {/* Search Input */}
-          <View style={[styles.searchContainer, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}>
-            <Search color={themeColors.textSecondary} size={16} style={styles.searchIcon} />
-            <TextInput
-              placeholder="Ürün veya marka ara... (örn: MAYB-LASH)"
-              placeholderTextColor={themeColors.textSecondary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              style={[styles.searchInput, { color: themeColors.text }]}
-            />
-            {searchQuery.length > 0 && (
-              <Pressable onPress={() => setSearchQuery('')}>
-                <X color={themeColors.textSecondary} size={16} />
+        {/* Suggestion Dropdown */}
+        {showSuggestions && suggestions.length > 0 && (
+          <View style={[styles.suggestionBox, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}>
+            {suggestions.map((item) => (
+              <Pressable
+                key={item.id}
+                onPress={() => {
+                  setSearchQuery(item.name);
+                  setShowSuggestions(false);
+                }}
+                style={({ pressed }) => [
+                  styles.suggestionRow,
+                  { backgroundColor: pressed ? themeColors.backgroundSelected : 'transparent' }
+                ]}
+              >
+                <Search size={12} color={themeColors.textSecondary} style={{ marginRight: 8 }} />
+                <Text style={[styles.suggestionText, { color: themeColors.text }]} numberOfLines={1}>
+                  {item.brand} - {item.name}
+                </Text>
+                <ChevronRight size={12} color={themeColors.textSecondary} />
               </Pressable>
-            )}
+            ))}
           </View>
+        )}
+      </View>
 
-          {/* Quick Categories filter buttons under BIST tab */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.six }}>
+        
+        {/* Campaign Banner Carousel (Conditional) */}
+        {!hasSearch && selectedCategory === 'all' && (
+          <View style={styles.bannerContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} pagingEnabled snapToAlignment="center" snapToInterval={width - Spacing.six} contentContainerStyle={styles.bannerScroll}>
+              {CAMPAIGNS.map(item => (
+                <View key={item.id} style={[styles.bannerCard, { backgroundColor: item.bg, borderColor: item.border }]}>
+                  <View style={styles.bannerBadge}>
+                    <Text style={styles.bannerBadgeText}>{item.badge}</Text>
+                  </View>
+                  <Text style={styles.bannerTitle} numberOfLines={1}>{item.title}</Text>
+                  <Text style={styles.bannerDesc} numberOfLines={2}>{item.desc}</Text>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Category Circle Row */}
+        <View style={styles.categoriesContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesScroll}>
             {CATEGORIES.map(cat => {
               const isSelected = selectedCategory === cat.id;
               return (
                 <Pressable
                   key={cat.id}
                   onPress={() => setSelectedCategory(cat.id)}
-                  style={[
-                    styles.categoryChip,
-                    { 
-                      backgroundColor: isSelected ? themeColors.primary : themeColors.backgroundElement,
-                      borderColor: isSelected ? themeColors.accent : themeColors.border 
-                    }
-                  ]}
+                  style={styles.categoryCircleItem}
                 >
-                  <Text style={[styles.categoryChipText, { color: isSelected ? '#4A3538' : themeColors.text, fontWeight: isSelected ? '700' : '500' }]}>
+                  <View 
+                    style={[
+                      styles.categoryCircle, 
+                      { 
+                        backgroundColor: isSelected ? themeColors.primary : themeColors.backgroundElement,
+                        borderColor: isSelected ? themeColors.accent : themeColors.border 
+                      }
+                    ]}
+                  >
+                    {getCategoryIcon(cat.id, isSelected ? '#4A3538' : themeColors.text, 20)}
+                  </View>
+                  <Text 
+                    style={[
+                      styles.categoryLabel, 
+                      { 
+                        color: isSelected ? themeColors.text : themeColors.textSecondary,
+                        fontWeight: isSelected ? '700' : '500' 
+                      }
+                    ]}
+                    numberOfLines={1}
+                  >
                     {cat.name}
                   </Text>
                 </Pressable>
               );
             })}
           </ScrollView>
-
-          {/* Sort row */}
-          <View style={styles.sortRow}>
-            <Text style={[styles.infoText, { color: themeColors.textSecondary }]}>
-              {sortedProducts.length} Hisse Listeleniyor
-            </Text>
-            
-            <Pressable 
-              onPress={() => setShowSortMenu(!showSortMenu)}
-              style={[styles.sortButton, { backgroundColor: themeColors.primary + '20' }]}
-            >
-              <currentSort.icon size={12} color={themeColors.accent} />
-              <Text style={[styles.sortButtonText, { color: themeColors.accent }]}>{currentSort.label}</Text>
-              {showSortMenu ? <ChevronUp size={10} color={themeColors.accent} /> : <ChevronDown size={10} color={themeColors.accent} />}
-            </Pressable>
-          </View>
-
-          {/* Sort Dropdown */}
-          {showSortMenu && (
-            <View style={[styles.sortMenu, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}>
-              {SORT_OPTIONS.map(opt => (
-                <Pressable
-                  key={opt.key}
-                  onPress={() => {
-                    setSortBy(opt.key);
-                    setShowSortMenu(false);
-                  }}
-                  style={[styles.sortMenuItem, sortBy === opt.key && { backgroundColor: themeColors.primary + '20' }]}
-                >
-                  <opt.icon size={14} color={sortBy === opt.key ? themeColors.accent : themeColors.textSecondary} />
-                  <Text style={[styles.sortMenuItemText, { color: sortBy === opt.key ? themeColors.text : themeColors.textSecondary }]}>
-                    {opt.label}
-                  </Text>
-                  {sortBy === opt.key && <Check size={14} color={themeColors.accent} />}
-                </Pressable>
-              ))}
-            </View>
-          )}
-
-          {/* Active Filter Indicator */}
-          {selectedBrand && (
-            <View style={styles.activeFilterContainer}>
-              <Text style={[styles.activeFilterText, { color: themeColors.textSecondary }]}>
-                Aktif Marka Filtresi: <Text style={{ fontWeight: 'bold', color: themeColors.text }}>{selectedBrand}</Text>
-              </Text>
-              <Pressable onPress={() => setSelectedBrand(null)} style={[styles.clearFilterBadge, { backgroundColor: themeColors.primary }]}>
-                <Text style={styles.clearFilterBadgeText}>Kaldır</Text>
-              </Pressable>
-            </View>
-          )}
         </View>
-      )}
 
-      {/* TAB CONTENT */}
-      {activeTab === 'bist' && (
-        <FlatList
-          data={displayedProducts}
-          keyExtractor={(item) => item.id}
-          renderItem={renderProductItem}
-          ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: themeColors.border }]} />}
-          contentContainerStyle={[styles.listContainer, { paddingBottom: BottomTabInset + Spacing.five }]}
-          showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={themeColors.accent} />}
-          onEndReached={() => {
-            if (visibleLimit < sortedProducts.length) {
-              setVisibleLimit(prev => prev + 25);
-            }
-          }}
-          onEndReachedThreshold={0.5}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <AlertCircle size={40} color={themeColors.textSecondary} />
-              <Text style={[styles.emptyTitle, { color: themeColors.text }]}>Eşleşen Hisse Bulunamadı</Text>
-              <Text style={[styles.emptySubtitle, { color: themeColors.textSecondary }]}>
-                Arama kelimenize uygun makyaj ürünü borsada bulunamadı.
+        {/* MAIN PRODUCT DISPLAYS */}
+        {hasSearch || selectedCategory !== 'all' ? (
+          /* ACTIVE FILTER GRID DISPLAY */
+          <View style={styles.sectionContainer}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Arama ve Filtre Sonuçları</Text>
+              <Text style={[styles.sectionSubtitleText, { color: themeColors.textSecondary }]}>
+                {filteredProducts.length} ürün bulundu
               </Text>
             </View>
-          }
-        />
-      )}
-
-      {activeTab === 'brand' && (
-        <ScrollView 
-          contentContainerStyle={[styles.gridContainer, { paddingBottom: BottomTabInset + Spacing.six }]}
-          showsVerticalScrollIndicator={false}
-        >
-          <Text style={[styles.sectionHeader, { color: themeColors.text }]}>Marka Fiyat Endeksleri (Forex)</Text>
-          {brandIndices.map(item => {
-            const isDrop = item.change < 0;
-            return (
-              <Pressable
-                key={item.brand}
-                onPress={() => {
-                  setSelectedBrand(item.brand);
-                  setActiveTab('bist');
-                }}
-                style={({ pressed }) => [
-                  styles.indexRowCard,
-                  { 
-                    backgroundColor: pressed ? themeColors.backgroundSelected : themeColors.backgroundElement,
-                    borderColor: themeColors.border
-                  }
-                ]}
-              >
-                <View style={styles.indexRowLeft}>
-                  <Text style={[styles.indexRowSymbol, { color: themeColors.text }]}>{item.symbol}</Text>
-                  <Text style={[styles.indexRowName, { color: themeColors.textSecondary }]}>{item.brand}</Text>
-                </View>
-                <View style={styles.indexRowCenter}>
-                  <Text style={[styles.indexRowPrice, { color: themeColors.text }]}>
-                    ₺{item.value.toLocaleString('tr-TR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
-                  </Text>
-                  <Text style={[styles.indexRowCount, { color: themeColors.textSecondary }]}>
-                    {item.count} Ürün
-                  </Text>
-                </View>
-                <View style={[styles.indexRowBadge, { backgroundColor: isDrop ? themeColors.success + '20' : themeColors.danger + '20' }]}>
-                  <Text style={[styles.indexRowBadgeText, { color: isDrop ? themeColors.success : themeColors.danger }]}>
-                    {isDrop ? '' : '+'}{item.change.toFixed(1)}%
-                  </Text>
-                </View>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      )}
-
-      {activeTab === 'category' && (
-        <ScrollView 
-          contentContainerStyle={[styles.gridContainer, { paddingBottom: BottomTabInset + Spacing.six }]}
-          showsVerticalScrollIndicator={false}
-        >
-          <Text style={[styles.sectionHeader, { color: themeColors.text }]}>Kategori Fiyat Endeksleri (Emtia)</Text>
-          {categoryIndices.map(item => {
-            const isDrop = item.change < 0;
-            return (
-              <Pressable
-                key={item.categoryId}
-                onPress={() => {
-                  setSelectedCategory(item.categoryId);
-                  setSelectedBrand(null);
-                  setActiveTab('bist');
-                }}
-                style={({ pressed }) => [
-                  styles.indexRowCard,
-                  { 
-                    backgroundColor: pressed ? themeColors.backgroundSelected : themeColors.backgroundElement,
-                    borderColor: themeColors.border
-                  }
-                ]}
-              >
-                <View style={styles.indexRowLeft}>
-                  <Text style={[styles.indexRowSymbol, { color: themeColors.text }]}>
-                    {item.categoryId.toUpperCase().padEnd(6, 'X')}
-                  </Text>
-                  <Text style={[styles.indexRowName, { color: themeColors.textSecondary }]}>{item.name}</Text>
-                </View>
-                <View style={styles.indexRowCenter}>
-                  <Text style={[styles.indexRowPrice, { color: themeColors.text }]}>
-                    ₺{item.value.toLocaleString('tr-TR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
-                  </Text>
-                  <Text style={[styles.indexRowCount, { color: themeColors.textSecondary }]}>
-                    {item.count} Kalem
-                  </Text>
-                </View>
-                <View style={[styles.indexRowBadge, { backgroundColor: isDrop ? themeColors.success + '20' : themeColors.danger + '20' }]}>
-                  <Text style={[styles.indexRowBadgeText, { color: isDrop ? themeColors.success : themeColors.danger }]}>
-                    {isDrop ? '' : '+'}{item.change.toFixed(1)}%
-                  </Text>
-                </View>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      )}
-
-      {activeTab === 'opportunity' && (
-        <FlatList
-          data={displayedProducts}
-          keyExtractor={(item) => item.id}
-          renderItem={renderProductItem}
-          ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: themeColors.border }]} />}
-          contentContainerStyle={[styles.listContainer, { paddingBottom: BottomTabInset + Spacing.five }]}
-          showsVerticalScrollIndicator={false}
-          ListHeaderComponent={
-            <View style={[styles.opportunityBanner, { backgroundColor: themeColors.success + '10', borderColor: themeColors.success }]}>
-              <TrendingDown size={24} color={themeColors.success} />
-              <View style={styles.opportunityBannerText}>
-                <Text style={[styles.opportunityBannerTitle, { color: themeColors.text }]}>Maksimum İndirimli Hisseler</Text>
-                <Text style={[styles.opportunityBannerDesc, { color: themeColors.textSecondary }]}>
-                  Ortalama piyasa fiyatına göre en çok değer kaybeden (en yüksek indirim oranına sahip) makyaj ürünleri listelenmiştir.
+            <View style={styles.productGrid}>
+              {filteredProducts.map(renderGridProductCard)}
+            </View>
+            {filteredProducts.length === 0 && (
+              <View style={styles.emptyResults}>
+                <AlertCircle size={32} color={themeColors.textSecondary} />
+                <Text style={[styles.emptyResultsTitle, { color: themeColors.text }]}>Eşleşen Ürün Bulunamadı</Text>
+                <Text style={[styles.emptyResultsSubtitle, { color: themeColors.textSecondary }]}>
+                  Seçtiğiniz filtreye uygun kozmetik ürünü bulunmamaktadır.
                 </Text>
               </View>
+            )}
+          </View>
+        ) : (
+          /* DEFAULT CURATED HOMEPAGE SECTIONS */
+          <>
+            {/* Günün Fırsatları */}
+            <View style={styles.sectionContainer}>
+              <View style={styles.sectionHeaderRow}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Percent size={16} color={themeColors.success} />
+                  <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Günün İndirim Fırsatları</Text>
+                </View>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
+                {dealsOfDay.map(renderHorizontalProductCard)}
+              </ScrollView>
             </View>
-          }
-          onEndReached={() => {
-            if (visibleLimit < sortedProducts.length) {
-              setVisibleLimit(prev => prev + 25);
-            }
-          }}
-          onEndReachedThreshold={0.5}
-        />
-      )}
+
+            {/* Popüler Ürünler */}
+            <View style={styles.sectionContainer}>
+              <View style={styles.sectionHeaderRow}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <ShoppingCart size={16} color={themeColors.accent} />
+                  <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Borsada En Çok Arananlar</Text>
+                </View>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
+                {popularProducts.map(renderHorizontalProductCard)}
+              </ScrollView>
+            </View>
+
+            {/* Sizin İçin Seçtiklerimiz (Tüm Ürünler Grid) */}
+            <View style={styles.sectionContainer}>
+              <View style={styles.sectionHeaderRow}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Sparkles size={16} color={themeColors.accent} />
+                  <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Sizin İçin Seçtiklerimiz</Text>
+                </View>
+              </View>
+              <View style={styles.productGrid}>
+                {allProducts.slice(0, 16).map(renderGridProductCard)}
+              </View>
+            </View>
+          </>
+        )}
+      </ScrollView>
 
       {/* QUICK PRODUCT ADD MODAL */}
       <Modal
@@ -747,14 +586,14 @@ export default function HomeScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: themeColors.text }]}>Borsaya Yeni Hisse Ekle</Text>
+              <Text style={[styles.modalTitle, { color: themeColors.text }]}>Yeni Ürün Ekle</Text>
               <Pressable onPress={() => setModalVisible(false)} style={styles.closeButton}>
                 <X color={themeColors.text} size={24} />
               </Pressable>
             </View>
 
             <ScrollView contentContainerStyle={styles.modalForm}>
-              <Text style={[styles.inputLabel, { color: themeColors.text }]}>Hisse/Ürün Adı *</Text>
+              <Text style={[styles.inputLabel, { color: themeColors.text }]}>Ürün Adı *</Text>
               <TextInput
                 style={[styles.modalInput, { color: themeColors.text, backgroundColor: themeColors.background, borderColor: themeColors.border }]}
                 placeholder="Örn: Sky High Maskara Very Black"
@@ -800,7 +639,7 @@ export default function HomeScreen() {
                 onPress={handleAddCustomProduct}
                 style={[styles.submitButton, { backgroundColor: themeColors.accent }]}
               >
-                <Text style={styles.submitButtonText}>Hisseli Ürünü Kaydet</Text>
+                <Text style={styles.submitButtonText}>Ürünü Kaydet & Karşılaştır</Text>
               </Pressable>
             </ScrollView>
           </View>
@@ -820,7 +659,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: Spacing.three,
     paddingTop: Platform.OS === 'ios' ? Spacing.two : Spacing.four,
-    paddingBottom: Spacing.three,
+    paddingBottom: Spacing.two,
   },
   logoText: {
     fontSize: 22,
@@ -835,352 +674,288 @@ const styles = StyleSheet.create({
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: Spacing.two - 2,
-    paddingHorizontal: Spacing.three,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
     borderRadius: 20,
     gap: 4,
   },
   addButtonText: {
     color: '#4A3538',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  // Indices Row
-  indicesRow: {
-    paddingVertical: Spacing.two,
-    borderBottomWidth: 1,
-  },
-  indicesScroll: {
-    paddingHorizontal: Spacing.three,
-    gap: Spacing.two,
-  },
-  indexCard: {
-    width: 120,
-    padding: Spacing.two + 2,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  indexHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  indexName: {
-    fontSize: 9,
-    fontWeight: '700',
-  },
-  indexSymbol: {
-    fontSize: 8,
-    color: '#E8A7B5',
-    fontWeight: '700',
-  },
-  indexValue: {
-    fontSize: 14,
-    fontWeight: '800',
-    marginTop: 6,
-  },
-  indexChangeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    alignSelf: 'flex-start',
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 4,
-    marginTop: 4,
-  },
-  indexChangeText: {
-    fontSize: 9,
-    fontWeight: '800',
-  },
-  // Tabs Bar
-  tabBar: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    paddingHorizontal: Spacing.two,
-  },
-  tabItem: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing.three,
-    gap: 4,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  tabLabel: {
     fontSize: 11,
     fontWeight: '700',
   },
-  // Filter Section
-  filterSection: {
-    padding: Spacing.three,
-    gap: Spacing.two,
+  // Search section
+  searchSection: {
+    paddingHorizontal: Spacing.three,
+    paddingBottom: Spacing.two,
+    zIndex: 10,
   },
-  searchContainer: {
+  searchBarContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two - 2,
     borderRadius: 12,
     borderWidth: 1,
+    height: 42,
   },
   searchIcon: {
-    marginRight: Spacing.two,
+    marginRight: 6,
   },
   searchInput: {
     flex: 1,
     fontSize: 13,
     paddingVertical: 4,
   },
-  categoryScroll: {
-    gap: Spacing.one + 2,
-    paddingVertical: 2,
-  },
-  categoryChip: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one + 2,
-    borderRadius: 16,
-    borderWidth: 1,
-  },
-  categoryChipText: {
-    fontSize: 11,
-  },
-  sortRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  infoText: {
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  sortButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.one + 2,
-    borderRadius: 8,
-    gap: 4,
-  },
-  sortButtonText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  sortMenu: {
+  suggestionBox: {
+    position: 'absolute',
+    top: 45,
+    left: Spacing.three,
+    right: Spacing.three,
     borderRadius: 12,
     borderWidth: 1,
-    overflow: 'hidden',
-    marginTop: 4,
+    paddingVertical: 6,
+    zIndex: 100,
+    maxHeight: 220,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  sortMenuItem: {
+  suggestionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: Spacing.three - 2,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  suggestionText: {
+    fontSize: 12,
+    flex: 1,
+  },
+  // Banners
+  bannerContainer: {
+    marginVertical: Spacing.two,
+  },
+  bannerScroll: {
     paddingHorizontal: Spacing.three,
     gap: Spacing.two,
   },
-  sortMenuItemText: {
-    flex: 1,
-    fontSize: 12,
-    fontWeight: '600',
+  bannerCard: {
+    width: width - Spacing.six,
+    padding: Spacing.three + 2,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 4,
   },
-  activeFilterContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: Spacing.two,
-    borderRadius: 8,
-    backgroundColor: 'rgba(232, 167, 181, 0.1)',
-  },
-  activeFilterText: {
-    fontSize: 11,
-  },
-  clearFilterBadge: {
-    paddingHorizontal: 8,
+  bannerBadge: {
+    backgroundColor: '#4A3538',
+    paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
+    alignSelf: 'flex-start',
   },
-  clearFilterBadgeText: {
-    fontSize: 9,
-    color: '#4A3538',
-    fontWeight: '700',
-  },
-  // Stock Items
-  listContainer: {
-    paddingHorizontal: Spacing.three,
-  },
-  stockItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.two,
-    borderRadius: 12,
-    borderBottomWidth: 1,
-  },
-  stockLeft: {
-    flex: 1,
-    marginRight: Spacing.two,
-  },
-  stockSymbolRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  stockSymbol: {
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: -0.2,
-  },
-  brandBadge: {
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 4,
-    borderWidth: 0.5,
-  },
-  brandBadgeText: {
+  bannerBadgeText: {
+    color: '#FFF',
     fontSize: 8,
     fontWeight: '800',
   },
-  stockName: {
-    fontSize: 11,
-    marginTop: 2,
-  },
-  stockCenter: {
-    alignItems: 'flex-end',
-    width: 90,
-    marginRight: Spacing.three,
-  },
-  stockPrice: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  stockStore: {
-    fontSize: 10,
-    fontWeight: '500',
-    marginTop: 2,
-  },
-  stockRight: {
-    width: 65,
-    alignItems: 'flex-end',
-  },
-  changeBadge: {
-    width: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  changeText: {
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  actionIcon: {
-    padding: Spacing.one + 2,
-    marginLeft: 4,
-  },
-  separator: {
-    height: 1,
-  },
-  // End of lists
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing.six,
-    gap: Spacing.two,
-  },
-  emptyTitle: {
+  bannerTitle: {
     fontSize: 15,
     fontWeight: '800',
+    color: '#4A3538',
+    marginTop: 2,
   },
-  emptySubtitle: {
-    fontSize: 12,
-    textAlign: 'center',
-    paddingHorizontal: Spacing.five,
+  bannerDesc: {
+    fontSize: 11,
+    color: '#60484B',
+    lineHeight: 15,
   },
-  // Brand & Category lists
-  gridContainer: {
-    padding: Spacing.three,
-    gap: Spacing.two,
+  // Categories circle lists
+  categoriesContainer: {
+    marginVertical: Spacing.two,
   },
-  sectionHeader: {
-    fontSize: 14,
-    fontWeight: '800',
-    marginBottom: 4,
+  categoriesScroll: {
+    paddingHorizontal: Spacing.three,
+    gap: 12,
   },
-  indexRowCard: {
-    flexDirection: 'row',
+  categoryCircleItem: {
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: Spacing.three,
-    borderRadius: 14,
+    width: 66,
+  },
+  categoryCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: 1,
   },
-  indexRowLeft: {
-    flex: 1,
+  categoryLabel: {
+    fontSize: 10,
+    marginTop: 4,
+    textAlign: 'center',
   },
-  indexRowSymbol: {
-    fontSize: 13,
+  // Section layout
+  sectionContainer: {
+    marginVertical: Spacing.two + 2,
+    paddingHorizontal: Spacing.three,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.two,
+  },
+  sectionTitle: {
+    fontSize: 14,
     fontWeight: '800',
-    color: '#D48C9E',
   },
-  indexRowName: {
+  sectionSubtitleText: {
     fontSize: 11,
     fontWeight: '500',
-    marginTop: 2,
   },
-  indexRowCenter: {
-    alignItems: 'flex-end',
-    marginRight: Spacing.three,
+  horizontalScroll: {
+    gap: Spacing.two,
+    paddingBottom: 4,
   },
-  indexRowPrice: {
-    fontSize: 14,
-    fontWeight: '700',
+  // Product Card styles
+  horizontalCard: {
+    width: CARD_WIDTH,
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: 'hidden',
+    position: 'relative',
   },
-  indexRowCount: {
-    fontSize: 10,
-    fontWeight: '500',
-    marginTop: 2,
+  gridCard: {
+    width: '48.5%',
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: 'hidden',
+    position: 'relative',
+    marginBottom: 10,
   },
-  indexRowBadge: {
-    width: 65,
+  cardHeartIcon: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    zIndex: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cardImageWrapper: {
+    width: '100%',
+    height: 100,
+    backgroundColor: '#FFF',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 5,
-    borderRadius: 6,
   },
-  indexRowBadgeText: {
+  cardImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'contain',
+  },
+  gridImageWrapper: {
+    width: '100%',
+    height: 110,
+    backgroundColor: '#FFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gridImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'contain',
+  },
+  cardBody: {
+    padding: Spacing.two,
+    gap: 2,
+  },
+  cardBrand: {
+    fontSize: 8,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  cardTitleText: {
     fontSize: 11,
+    fontWeight: '600',
+    height: 32,
+    lineHeight: 15,
+  },
+  cardRatingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginTop: 2,
+  },
+  cardRatingText: {
+    fontSize: 9,
+    fontWeight: '500',
+  },
+  cardPriceSection: {
+    marginTop: 6,
+    gap: 1,
+  },
+  originalPriceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  cardOriginalPrice: {
+    fontSize: 9,
+    textDecorationLine: 'line-through',
+  },
+  cardDiscountBadge: {
+    paddingHorizontal: 3,
+    paddingVertical: 1,
+    borderRadius: 3,
+  },
+  cardDiscountBadgeText: {
+    color: '#FFF',
+    fontSize: 8,
     fontWeight: '800',
   },
-  // Opportunity Banner
-  opportunityBanner: {
-    flexDirection: 'row',
-    padding: Spacing.three,
-    borderRadius: 14,
-    borderWidth: 1,
-    gap: Spacing.two,
-    marginBottom: Spacing.three,
-    alignItems: 'flex-start',
-  },
-  opportunityBannerText: {
-    flex: 1,
-  },
-  opportunityBannerTitle: {
+  cardCheapestPrice: {
     fontSize: 13,
     fontWeight: '800',
   },
-  opportunityBannerDesc: {
-    fontSize: 10,
-    lineHeight: 14,
-    marginTop: 2,
+  cardCheapestStore: {
+    fontSize: 9,
+    fontWeight: '600',
   },
-  // Modal Stilleri
+  cardNoPrice: {
+    fontSize: 10,
+    fontWeight: '500',
+    marginTop: 4,
+  },
+  productGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  emptyResults: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.five,
+    gap: 6,
+  },
+  emptyResultsTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  emptyResultsSubtitle: {
+    fontSize: 11,
+    textAlign: 'center',
+  },
+  // Modal layout
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
   modalContent: {

@@ -10,7 +10,6 @@ import {
   Platform,
   useColorScheme,
   Linking,
-  ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { 
@@ -24,9 +23,7 @@ import {
   AlertCircle,
   TrendingDown,
   TrendingUp,
-  Activity,
-  Calendar,
-  Smile
+  Calendar
 } from 'lucide-react-native';
 
 import { Colors, Spacing, BottomTabInset } from '@/constants/theme';
@@ -77,7 +74,7 @@ export default function ProductDetailScreen() {
         return Math.round(p / 10) * 10 - 0.1;
       };
 
-      const categories = ['ruj', 'rimel', 'kalem', 'allik', 'far', 'oje', 'cilt'];
+      const categories = ['ruj', 'rimel', 'kalem', 'allik', 'far', 'oje', 'cilt', 'sac'];
       const category = categories[seed % categories.length];
       const brand = 'Simüle Marka';
       const name = `Makyaj Ürünü #${seed % 1000}`;
@@ -101,7 +98,7 @@ export default function ProductDetailScreen() {
           trendyol: roundPrice(basePrice * 0.88) as number,
           hepsiburada: roundPrice(basePrice * 0.90) as number,
         },
-        description: 'Borsa üzerinden simüle edilen özel ürün detayları.',
+        description: 'Özel fiyat algoritmamız tarafından simüle edilen kozmetik ürün detayları.',
       };
     }
 
@@ -148,8 +145,8 @@ export default function ProductDetailScreen() {
 
       list.push({
         date: dateStr,
-        price: parseFloat(dailyPrice.toFixed(2)),
-        change: parseFloat(change.toFixed(2)),
+        price: parseFloat(dailyPrice.toFixed(1)),
+        change: parseFloat(change.toFixed(1)),
       });
     }
 
@@ -193,7 +190,7 @@ export default function ProductDetailScreen() {
       <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
         <View style={styles.errorContainer}>
           <AlertCircle color={themeColors.danger} size={48} />
-          <Text style={[styles.errorTitle, { color: themeColors.text }]}>Hisse Bulunamadı</Text>
+          <Text style={[styles.errorTitle, { color: themeColors.text }]}>Ürün Bulunamadı</Text>
           <Pressable 
             onPress={() => router.back()} 
             style={[styles.backBtn, { backgroundColor: themeColors.primary }]}
@@ -206,6 +203,7 @@ export default function ProductDetailScreen() {
   }
 
   const isDrop = product.change < 0;
+  const discountPercent = Math.abs(Math.round(product.change));
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
@@ -217,7 +215,7 @@ export default function ProductDetailScreen() {
         >
           <ArrowLeft color={themeColors.text} size={20} />
         </Pressable>
-        <Text style={[styles.navTitle, { color: themeColors.text }]}>{product.symbol} Analizi</Text>
+        <Text style={[styles.navTitle, { color: themeColors.text }]} numberOfLines={1}>Ürün Detayı</Text>
         <Pressable
           onPress={() => {
             if (inWatchlist) {
@@ -237,11 +235,15 @@ export default function ProductDetailScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Cover Product Info Card (Borsa Style) */}
+        {/* Cover Image Preview */}
+        <View style={[styles.imageCard, { backgroundColor: '#FFF', borderColor: themeColors.border }]}>
+          <Image source={{ uri: product.image }} style={styles.productImage} />
+        </View>
+
+        {/* Product Info Card */}
         <View style={[styles.priceCard, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}>
           <View style={styles.priceHeader}>
-            <View style={styles.priceHeaderLeft}>
-              <Text style={[styles.ticker, { color: themeColors.text }]}>{product.symbol}</Text>
+            <View style={styles.brandBadgeWrapper}>
               <View style={[styles.brandBadge, { backgroundColor: themeColors.primary + '30', borderColor: themeColors.primary }]}>
                 <Text style={[styles.brandBadgeText, { color: themeColors.accent }]}>{product.brand}</Text>
               </View>
@@ -259,14 +261,14 @@ export default function ProductDetailScreen() {
           </Text>
 
           <View style={styles.cheapestPriceWrapper}>
-            <Text style={[styles.priceLabel, { color: themeColors.textSecondary }]}>En Düşük Fiyat</Text>
+            <Text style={[styles.priceLabel, { color: themeColors.textSecondary }]}>En Uygun Satış Fiyatı</Text>
             {cheapest ? (
               <Text style={[styles.priceValue, { color: themeColors.text }]}>
                 ₺{cheapest.price.toLocaleString('tr-TR')}
                 <Text style={styles.priceStoreName}> ({cheapest.storeName})</Text>
               </Text>
             ) : (
-              <Text style={[styles.priceValue, { color: themeColors.textSecondary }]}>Veri Yok</Text>
+              <Text style={[styles.priceValue, { color: themeColors.textSecondary }]}>Stokta Yok</Text>
             )}
           </View>
 
@@ -278,44 +280,35 @@ export default function ProductDetailScreen() {
               <TrendingUp size={14} color={themeColors.danger} style={{ marginRight: 3 }} />
             )}
             <Text style={[styles.changeTextVal, { color: isDrop ? themeColors.success : themeColors.danger }]}>
-              %{Math.abs(product.change).toFixed(2)} {isDrop ? 'İndirim' : 'Artış'}
+              {isDrop ? `%${discountPercent} İndirim` : `%${discountPercent} Artış`} (Son 1 Ay)
             </Text>
           </View>
-
-          <Text style={[styles.reviewsCountText, { color: themeColors.textSecondary }]}>
-            Bu ürün hakkında toplam {product.reviewsCount} borsa yorumu bulunmaktadır.
-          </Text>
-        </View>
-
-        {/* Cover Image Preview */}
-        <View style={[styles.imageCard, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}>
-          <Image source={{ uri: product.image }} style={styles.productImage} />
         </View>
 
         {/* Product Description */}
         <View style={[styles.card, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}>
           <View style={styles.cardHeader}>
             <Info color={themeColors.accent} size={16} />
-            <Text style={[styles.cardTitle, { color: themeColors.text }]}>Hisse İzahnamesi (Açıklama)</Text>
+            <Text style={[styles.cardTitle, { color: themeColors.text }]}>Ürün Açıklaması</Text>
           </View>
           <Text style={[styles.descriptionText, { color: themeColors.textSecondary }]}>
-            {product.description || 'Bu makyaj hisse senedi hakkında detaylı açıklama yakında eklenecektir.'}
+            {product.description || 'Bu makyaj ürünü hakkında detaylı açıklama yakında eklenecektir.'}
           </Text>
         </View>
 
-        {/* Live Arbitrage Store Prices Table */}
+        {/* Live Store Prices Table */}
         <View style={[styles.card, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}>
           <View style={styles.cardHeader}>
             <Store color={themeColors.accent} size={16} />
-            <Text style={[styles.cardTitle, { color: themeColors.text }]}>Piyasa Derinliği (Mağaza Karşılaştırması)</Text>
+            <Text style={[styles.cardTitle, { color: themeColors.text }]}>Tüm Satış Noktaları</Text>
           </View>
           
           <View style={styles.pricesTable}>
             {/* Table Header */}
             <View style={[styles.tableHeader, { borderBottomColor: themeColors.border }]}>
-              <Text style={[styles.tableHeaderLabel, { flex: 2, color: themeColors.textSecondary }]}>Mağaza/Broker</Text>
+              <Text style={[styles.tableHeaderLabel, { flex: 2, color: themeColors.textSecondary }]}>Mağaza</Text>
               <Text style={[styles.tableHeaderLabel, { flex: 1.5, color: themeColors.textSecondary, textAlign: 'right' }]}>Fiyat</Text>
-              <Text style={[styles.tableHeaderLabel, { flex: 1.2, color: themeColors.textSecondary, textAlign: 'right' }]}>Makas %</Text>
+              <Text style={[styles.tableHeaderLabel, { flex: 1.2, color: themeColors.textSecondary, textAlign: 'right' }]}>İşlem</Text>
             </View>
 
             {/* Table Rows */}
@@ -346,20 +339,22 @@ export default function ProductDetailScreen() {
                     )}
                   </View>
                   
-                  <Text style={[styles.storePrice, { flex: 1.5, color: themeColors.text, fontWeight: isCheapest ? '800' : '700', textAlign: 'right' }]}>
-                    ₺{store.price.toFixed(2)}
-                  </Text>
+                  <View style={{ flex: 1.5, alignItems: 'flex-end' }}>
+                    <Text style={[styles.storePrice, { color: themeColors.text, fontWeight: isCheapest ? '800' : '700' }]}>
+                      ₺{store.price.toFixed(1)}
+                    </Text>
+                    {!isCheapest && (
+                      <Text style={[styles.deltaTextSmall, { color: themeColors.danger }]}>
+                        +%{deltaPercent.toFixed(1)}
+                      </Text>
+                    )}
+                  </View>
                   
                   <View style={{ flex: 1.2, alignItems: 'flex-end' }}>
-                    {isCheapest ? (
-                      <Text style={[styles.deltaCheapestText, { color: themeColors.success }]}>Lider</Text>
-                    ) : (
-                      <View style={[styles.deltaBadgeSmall, { backgroundColor: themeColors.danger + '15' }]}>
-                        <Text style={[styles.deltaBadgeSmallText, { color: themeColors.danger }]}>
-                          +{deltaPercent.toFixed(1)}%
-                        </Text>
-                      </View>
-                    )}
+                    <View style={styles.goButton}>
+                      <ExternalLink size={12} color={themeColors.accent} />
+                      <Text style={[styles.goButtonText, { color: themeColors.accent }]}>Git</Text>
+                    </View>
                   </View>
                 </Pressable>
               );
@@ -367,11 +362,11 @@ export default function ProductDetailScreen() {
           </View>
         </View>
 
-        {/* Historical Price Chart/Table Selector (1M/3M/6M) */}
+        {/* Historical Price Trend */}
         <View style={[styles.card, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}>
           <View style={styles.cardHeader}>
             <Calendar color={themeColors.accent} size={16} />
-            <Text style={[styles.cardTitle, { color: themeColors.text }]}>Tarihsel Fiyat Grafiği (Simüle)</Text>
+            <Text style={[styles.cardTitle, { color: themeColors.text }]}>Tarihsel Fiyat Değişimi</Text>
           </View>
 
           {/* Period selector */}
@@ -403,8 +398,8 @@ export default function ProductDetailScreen() {
           <View style={styles.historyList}>
             <View style={[styles.tableHeader, { borderBottomColor: themeColors.border }]}>
               <Text style={[styles.tableHeaderLabel, { flex: 2, color: themeColors.textSecondary }]}>Tarih</Text>
-              <Text style={[styles.tableHeaderLabel, { flex: 2, color: themeColors.textSecondary, textAlign: 'right' }]}>Kapanış Fiyatı</Text>
-              <Text style={[styles.tableHeaderLabel, { flex: 1.5, color: themeColors.textSecondary, textAlign: 'right' }]}>Günlük Fark</Text>
+              <Text style={[styles.tableHeaderLabel, { flex: 2, color: themeColors.textSecondary, textAlign: 'right' }]}>Fiyat</Text>
+              <Text style={[styles.tableHeaderLabel, { flex: 1.5, color: themeColors.textSecondary, textAlign: 'right' }]}>Değişim</Text>
             </View>
 
             {historicalData.map((item, index) => {
@@ -413,7 +408,7 @@ export default function ProductDetailScreen() {
                 <View key={item.date} style={[styles.historyRow, index % 2 === 1 && { backgroundColor: themeColors.background + '40' }]}>
                   <Text style={[styles.historyDate, { flex: 2, color: themeColors.textSecondary }]}>{item.date}</Text>
                   <Text style={[styles.historyPrice, { flex: 2, color: themeColors.text, textAlign: 'right' }]}>
-                    ₺{item.price.toFixed(2)}
+                    ₺{item.price.toFixed(1)}
                   </Text>
                   <View style={{ flex: 1.5, alignItems: 'flex-end' }}>
                     <View style={[styles.historyChangeBadge, { backgroundColor: changeIsDrop ? themeColors.success + '20' : themeColors.danger + '20' }]}>
@@ -435,10 +430,10 @@ export default function ProductDetailScreen() {
           <Text style={[styles.bottomLabel, { color: themeColors.textSecondary }]}>En iyi fiyat</Text>
           {cheapest ? (
             <Text style={[styles.bottomPriceVal, { color: themeColors.text }]}>
-              ₺{cheapest.price.toFixed(2)} <Text style={[styles.bottomStoreTextVal, { color: themeColors.accent }]}>({cheapest.storeName})</Text>
+              ₺{cheapest.price.toFixed(1)} <Text style={[styles.bottomStoreTextVal, { color: themeColors.accent }]}>({cheapest.storeName})</Text>
             </Text>
           ) : (
-            <Text style={[styles.bottomPriceVal, { color: themeColors.textSecondary }]}>Fiyat yok</Text>
+            <Text style={[styles.bottomPriceVal, { color: themeColors.textSecondary }]}>Stokta Yok</Text>
           )}
         </View>
 
@@ -447,7 +442,7 @@ export default function ProductDetailScreen() {
             if (inWatchlist) {
               removeFromWishlist(product.id);
             } else {
-              addToWishlist(product, 'Hisse Detay Sayfasından Hızlı Takip');
+              addToWishlist(product, 'Detay Sayfasından Hızlı Takip');
             }
           }}
           style={[
@@ -460,12 +455,12 @@ export default function ProductDetailScreen() {
           {inWatchlist ? (
             <>
               <Check color="#4A3538" size={16} />
-              <Text style={[styles.actionText, { color: '#4A3538' }]}>Takipte</Text>
+              <Text style={[styles.actionText, { color: '#4A3538' }]}>Listemde</Text>
             </>
           ) : (
             <>
               <Heart color="#FFF" size={16} />
-              <Text style={[styles.actionText, { color: '#FFF' }]}>Takip Listeme Ekle</Text>
+              <Text style={[styles.actionText, { color: '#FFF' }]}>Listeme Ekle</Text>
             </>
           )}
         </Pressable>
@@ -497,11 +492,30 @@ const styles = StyleSheet.create({
   navTitle: {
     fontSize: 15,
     fontWeight: '800',
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 12,
   },
   scrollContent: {
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,
     paddingBottom: BottomTabInset + Spacing.six + 40,
+  },
+  // Cover Image
+  imageCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: Spacing.two,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.three,
+    overflow: 'hidden',
+  },
+  productImage: {
+    width: '100%',
+    height: 200,
+    resizeMode: 'contain',
+    backgroundColor: '#FFF',
   },
   // Price Card
   priceCard: {
@@ -515,23 +529,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  priceHeaderLeft: {
+  brandBadgeWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  ticker: {
-    fontSize: 20,
-    fontWeight: '900',
-  },
   brandBadge: {
-    paddingHorizontal: 5,
-    paddingVertical: 1,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRadius: 4,
     borderWidth: 0.5,
   },
   brandBadgeText: {
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: '800',
   },
   ratingBadge: {
@@ -546,7 +556,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   productName: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
     marginTop: Spacing.two,
   },
@@ -563,12 +573,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   priceValue: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '900',
     marginTop: 2,
   },
   priceStoreName: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   changeBadge: {
@@ -581,30 +591,8 @@ const styles = StyleSheet.create({
     marginTop: Spacing.two,
   },
   changeTextVal: {
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  reviewsCountText: {
     fontSize: 11,
-    fontWeight: '500',
-    marginTop: Spacing.two + 2,
-  },
-  // Cover Image
-  imageCard: {
-    borderRadius: 18,
-    borderWidth: 1,
-    padding: Spacing.two,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.three,
-    overflow: 'hidden',
-  },
-  productImage: {
-    width: '100%',
-    height: 180,
-    borderRadius: 12,
-    resizeMode: 'cover',
-    backgroundColor: '#FFF',
+    fontWeight: '800',
   },
   // Card elements
   card: {
@@ -669,18 +657,22 @@ const styles = StyleSheet.create({
   storePrice: {
     fontSize: 13,
   },
-  deltaCheapestText: {
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  deltaBadgeSmall: {
-    paddingHorizontal: 4,
-    paddingVertical: 1.5,
-    borderRadius: 4,
-  },
-  deltaBadgeSmallText: {
+  deltaTextSmall: {
     fontSize: 9,
-    fontWeight: '800',
+    fontWeight: '600',
+  },
+  goButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: 'rgba(232, 167, 181, 0.1)',
+  },
+  goButtonText: {
+    fontSize: 10,
+    fontWeight: '700',
   },
   // Period select
   periodRow: {
