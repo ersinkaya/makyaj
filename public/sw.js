@@ -47,6 +47,21 @@ self.addEventListener('fetch', event => {
   // Only handle GET requests
   if (event.request.method !== 'GET') return;
 
+  // SPA navigation fallback: when user navigates to any page (like /wishlist or /compare),
+  // try to fetch from network. If offline, return the cached index.html or root.
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .catch(() => {
+          return caches.match('/index.html')
+            .then(fallback => {
+              return fallback || caches.match('/');
+            });
+        })
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then(cachedResponse => {
@@ -55,8 +70,8 @@ self.addEventListener('fetch', event => {
         }
 
         return fetch(event.request).then(response => {
-          // Check if we received a valid response
-          if (!response || response.status !== 200 || response.type !== 'basic') {
+          // Check if we received a valid response. Allow basic (same-origin) and cors (cross-origin) types.
+          if (!response || response.status !== 200 || (response.type !== 'basic' && response.type !== 'cors')) {
             return response;
           }
 
@@ -69,7 +84,6 @@ self.addEventListener('fetch', event => {
           return response;
         }).catch(err => {
           console.warn('[Service Worker] Fetch failed:', err);
-          // Fallback response if offline and not cached
         });
       })
   );

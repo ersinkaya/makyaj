@@ -29,11 +29,16 @@ export default function HTML({ children }: { children: React.ReactNode }) {
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {
-                window.addEventListener('load', () => {
+                const register = () => {
                   navigator.serviceWorker.register('/sw.js')
                     .then(reg => console.log('Service Worker registered successfully:', reg.scope))
                     .catch(err => console.log('Service Worker registration failed:', err));
-                });
+                };
+                if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                  register();
+                } else {
+                  window.addEventListener('load', register);
+                }
               }
             `,
           }}
