@@ -536,7 +536,7 @@ export default function HomeScreen() {
                   <View style={styles.sectionHeaderRow}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                       <ShoppingCart size={16} color={themeColors.accent} />
-                      <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Borsada En Çok Arananlar</Text>
+                      <Text style={[styles.sectionTitle, { color: themeColors.text }]}>En Çok Arananlar</Text>
                     </View>
                   </View>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>

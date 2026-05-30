@@ -22,12 +22,20 @@ import {
   Trash2,
   AlertCircle,
   PlusCircle,
-  Edit2
+  Edit2,
+  Sparkles,
+  Heart,
+  Eye,
+  Layers,
+  Smile,
+  Bookmark,
+  HelpCircle,
+  Compass
 } from 'lucide-react-native';
 
 import { Colors, Spacing, BottomTabInset } from '@/constants/theme';
 import { useWishlist, WishlistItem } from '@/context/WishlistContext';
-import { Product } from '@/constants/mockData';
+import { Product, CATEGORIES } from '@/constants/mockData';
 import { apiService } from '@/services/api';
 
 export default function WishlistScreen() {
@@ -49,6 +57,7 @@ export default function WishlistScreen() {
   const [groups, setGroups] = useState(['Favorilerim', 'Fiyat Takip', 'Alacaklarım']);
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
 
   // Search/Add state
   const [searchText, setSearchText] = useState('');
@@ -110,10 +119,29 @@ export default function WishlistScreen() {
     setActiveGroup('Favorilerim');
   };
 
-  // Filtered items in active watchlist group
+  // Filtered items in active watchlist group and selected category
   const activeGroupItems = useMemo(() => {
-    return items.filter(item => item.group === activeGroup);
-  }, [items, activeGroup]);
+    return items.filter(item => {
+      const matchGroup = item.group === activeGroup;
+      const matchCategory = selectedCategory === 'all' || item.product.category === selectedCategory;
+      return matchGroup && matchCategory;
+    });
+  }, [items, activeGroup, selectedCategory]);
+
+  const getCategoryIcon = (catId: string, color: string, size: number) => {
+    switch (catId) {
+      case 'all': return <Sparkles color={color} size={size} />;
+      case 'ruj': return <Heart color={color} size={size} />;
+      case 'rimel': return <Eye color={color} size={size} />;
+      case 'kalem': return <Layers color={color} size={size} />;
+      case 'allik': return <Smile color={color} size={size} />;
+      case 'far': return <Bookmark color={color} size={size} />;
+      case 'oje': return <HelpCircle color={color} size={size} />;
+      case 'cilt': return <Compass color={color} size={size} />;
+      case 'sac': return <HelpCircle color={color} size={size} />;
+      default: return <Sparkles color={color} size={size} />;
+    }
+  };
 
   // Find cheapest price helper
   const getCheapestPriceInfo = (prices: Product['prices']) => {
@@ -313,6 +341,46 @@ export default function WishlistScreen() {
           </ScrollView>
         </View>
 
+        {/* Product Categories Selector */}
+        <View style={styles.categoriesContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesScroll}>
+            {CATEGORIES.map(cat => {
+              const isSelected = selectedCategory === cat.id;
+              return (
+                <Pressable
+                  key={cat.id}
+                  onPress={() => setSelectedCategory(cat.id)}
+                  style={styles.categoryCircleItem}
+                >
+                  <View 
+                    style={[
+                      styles.categoryCircle, 
+                      { 
+                        backgroundColor: isSelected ? themeColors.primary : themeColors.backgroundElement,
+                        borderColor: isSelected ? themeColors.accent : themeColors.border 
+                      }
+                    ]}
+                  >
+                    {getCategoryIcon(cat.id, isSelected ? '#4A3538' : themeColors.text, 18)}
+                  </View>
+                  <Text 
+                    style={[
+                      styles.categoryLabel, 
+                      { 
+                        color: isSelected ? themeColors.text : themeColors.textSecondary,
+                        fontWeight: isSelected ? '700' : '500' 
+                      }
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {cat.name}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+
         {/* Quick Add Search input */}
         <View style={styles.addSection}>
           <View style={[styles.searchContainer, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}>
@@ -356,7 +424,9 @@ export default function WishlistScreen() {
             <AlertCircle size={48} color={themeColors.textSecondary} />
             <Text style={[styles.emptyTitle, { color: themeColors.text }]}>Listeniz Boş</Text>
             <Text style={[styles.emptySubtitle, { color: themeColors.textSecondary }]}>
-              Bu listede henüz ürün yok. Arama çubuğundan hızlıca arayıp ekleyebilirsiniz.
+              {selectedCategory !== 'all' 
+                ? 'Bu kategoride filtrelenmiş ürün bulunamadı.' 
+                : 'Bu listede henüz ürün yok. Arama çubuğundan hızlıca arayıp ekleyebilirsiniz.'}
             </Text>
           </View>
         ) : (
@@ -792,5 +862,31 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 12,
     fontWeight: '800',
+  },
+  // Categories circle lists
+  categoriesContainer: {
+    paddingVertical: Spacing.one,
+    marginBottom: Spacing.two,
+  },
+  categoriesScroll: {
+    paddingHorizontal: Spacing.three,
+    gap: 10,
+  },
+  categoryCircleItem: {
+    alignItems: 'center',
+    width: 60,
+  },
+  categoryCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  categoryLabel: {
+    fontSize: 9,
+    marginTop: 4,
+    textAlign: 'center',
   },
 });
