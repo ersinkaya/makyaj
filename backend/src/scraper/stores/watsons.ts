@@ -23,7 +23,7 @@ export async function scrapeWatsons(): Promise<void> {
 
     const $ = cheerio.load(response.data);
     
-    $('.product-tile').each((_, element) => {
+    $('.product-tile').each((_: number, element: any) => {
       const name = $(element).find('.product-name').text().trim();
       const brand = $(element).find('.product-brand').text().trim();
       const priceText = $(element).find('.price').text().trim();

@@ -23,7 +23,7 @@ export async function scrapeRossmann(): Promise<void> {
 
     const $ = cheerio.load(response.data);
     
-    $('.product-item-info').each((_, element) => {
+    $('.product-item-info').each((_: number, element: any) => {
       const name = $(element).find('.product-item-link').text().trim();
       const priceText = $(element).find('.price-wrapper .price').text().trim();
       const productLink = $(element).find('.product-item-link').attr('href') || '';

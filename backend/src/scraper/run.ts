@@ -21,12 +21,12 @@ export async function runAllScrapers(): Promise<void> {
 }
 
 // If executed directly from command line (e.g. npm run scrape)
-if (require.main === module) {
+if ((require as any).main === module) {
   runAllScrapers().then(() => {
     console.log('Veritabanı bağlantısı sonlandırılıyor...');
     db.pool.end();
     process.exit(0);
-  }).catch((err) => {
+  }).catch((err: any) => {
     console.error('Kritik Hata:', err);
     db.pool.end();
     process.exit(1);

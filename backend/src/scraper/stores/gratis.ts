@@ -24,8 +24,7 @@ export async function scrapeGratis(): Promise<void> {
 
     const $ = cheerio.load(response.data);
     
-    // Parse products (Note: Gratis may render via client-side, but we parse server-side static html first)
-    $('.product-item').each((_, element) => {
+    $('.product-item').each((_: number, element: any) => {
       const name = $(element).find('.product-name').text().trim();
       const brand = $(element).find('.brand-name').text().trim();
       const priceText = $(element).find('.price-value').text().trim();

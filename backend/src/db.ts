@@ -16,7 +16,7 @@ export const db = {
 };
 
 // Test the database connection
-pool.connect((err, client, release) => {
+pool.connect((err: any, client: any, release: any) => {
   if (err) {
     return console.error('Veritabanına bağlanırken hata oluştu:', err.stack);
   }

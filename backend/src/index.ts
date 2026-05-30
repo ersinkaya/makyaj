@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import cron from 'node-cron';
 import { db } from './db';
@@ -12,12 +12,12 @@ app.use(cors());
 app.use(express.json());
 
 // 1. Get Categories List
-app.get('/api/categories', async (req, res) => {
+app.get('/api/categories', async (req: Request, res: Response) => {
   try {
     const result = await db.query(
       'SELECT DISTINCT category FROM products ORDER BY category'
     );
-    const categories = result.rows.map(row => row.category);
+    const categories = result.rows.map((row: any) => row.category);
     res.json(categories);
   } catch (error) {
     console.error('Kategoriler çekilirken hata:', error);
@@ -26,7 +26,7 @@ app.get('/api/categories', async (req, res) => {
 });
 
 // 2. Search & List Products (Cheapest Price & Filters)
-app.get('/api/products', async (req, res) => {
+app.get('/api/products', async (req: Request, res: Response) => {
   try {
     const { category, brand, query, sort = 'cheapest', limit = '20', offset = '0' } = req.query;
 
@@ -81,7 +81,7 @@ app.get('/api/products', async (req, res) => {
     const result = await db.query(sql, params);
     
     // Format response values
-    const products = result.rows.map(row => ({
+    const products = result.rows.map((row: any) => ({
       id: row.id,
       name: row.name,
       brand: row.brand,
@@ -103,7 +103,7 @@ app.get('/api/products', async (req, res) => {
 });
 
 // 3. Get Single Product Details & Store Prices & Price History
-app.get('/api/products/:id', async (req, res) => {
+app.get('/api/products/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -133,7 +133,7 @@ app.get('/api/products/:id', async (req, res) => {
     );
 
     // Format results
-    const prices = pricesRes.rows.map(row => ({
+    const prices = pricesRes.rows.map((row: any) => ({
       storeKey: row.store_key,
       price: parseFloat(row.price),
       discountRate: parseFloat(row.discount_rate),
@@ -142,7 +142,7 @@ app.get('/api/products/:id', async (req, res) => {
     }));
 
     const history: Record<string, { date: string; price: number }[]> = {};
-    historyRes.rows.forEach(row => {
+    historyRes.rows.forEach((row: any) => {
       const store = row.store_key;
       const dateStr = new Date(row.recorded_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
       if (!history[store]) {
@@ -175,7 +175,7 @@ app.get('/api/products/:id', async (req, res) => {
 });
 
 // 4. Force Scrape trigger endpoint (Protected in real apps, public for tests)
-app.post('/api/scrape/trigger', async (req, res) => {
+app.post('/api/scrape/trigger', async (req: Request, res: Response) => {
   try {
     // Run async so it doesn't block the HTTP request
     runAllScrapers();
