@@ -236,7 +236,7 @@ export default function HomeScreen() {
     return (
       <Pressable
         key={item.id}
-        onPress={() => router.push({ pathname: '/product/[id]', params: { id: item.id } })}
+        onPress={() => router.push((`/product/${item.id}`) as any)}
         style={[styles.horizontalCard, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}
       >
         <Pressable
@@ -313,7 +313,7 @@ export default function HomeScreen() {
     return (
       <Pressable
         key={item.id}
-        onPress={() => router.push({ pathname: '/product/[id]', params: { id: item.id } })}
+        onPress={() => router.push((`/product/${item.id}`) as any)}
         style={[styles.gridCard, { backgroundColor: themeColors.backgroundElement, borderColor: themeColors.border }]}
       >
         <Pressable

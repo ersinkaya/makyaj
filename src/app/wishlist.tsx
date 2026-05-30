@@ -193,7 +193,7 @@ export default function WishlistScreen() {
         <View style={styles.cartItemRow}>
           {/* Product Thumbnail */}
           <Pressable 
-            onPress={() => router.push({ pathname: '/product/[id]', params: { id: item.product.id } })}
+            onPress={() => router.push((`/product/${item.product.id}`) as any)}
             style={styles.thumbnailWrapper}
           >
             <Image source={{ uri: item.product.image }} style={styles.thumbnailImage} />
