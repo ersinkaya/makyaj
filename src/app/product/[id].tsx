@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -10,6 +10,7 @@ import {
   Platform,
   useColorScheme,
   Linking,
+  ActivityIndicator
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { 
@@ -28,14 +29,11 @@ import {
 
 import { Colors, Spacing, BottomTabInset } from '@/constants/theme';
 import { 
-  INITIAL_PRODUCTS, 
-  Product, 
   STORE_NAMES, 
-  getCategoryImage,
-  getProductSymbol,
   CATEGORIES
 } from '@/constants/mockData';
 import { useWishlist } from '@/context/WishlistContext';
+import { apiService, ApiProductDetail, ApiStorePrice } from '@/services/api';
 
 interface HistoryItem {
   date: string;
@@ -52,6 +50,8 @@ export default function ProductDetailScreen() {
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
 
   const [selectedPeriod, setSelectedPeriod] = useState<number>(30);
+  const [apiProduct, setApiProduct] = useState<ApiProductDetail | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
   const periods = [
     { label: '1 Ay', days: 30 },
@@ -59,51 +59,56 @@ export default function ProductDetailScreen() {
     { label: '6 Ay', days: 180 },
   ];
 
-  // Find the product in INITIAL_PRODUCTS or dynamically reconstruct it if simulated
-  const product = useMemo((): Product | null => {
-    if (!id) return null;
-    
-    const found = INITIAL_PRODUCTS.find((p) => p.id === id);
-    if (found) return found;
-
-    if (id.startsWith('sim-') || id.startsWith('custom-')) {
-      const seed = parseInt(id.split('-')[1]) || Date.now();
-      const basePrice = 80 + (seed % 600);
-      const roundPrice = (p: number | null) => {
-        if (p === null) return null;
-        return Math.round(p / 10) * 10 - 0.1;
-      };
-
-      const categories = ['ruj', 'rimel', 'kalem', 'allik', 'far', 'oje', 'cilt', 'sac'];
-      const category = categories[seed % categories.length];
-      const brand = 'Simüle Marka';
-      const name = `Makyaj Ürünü #${seed % 1000}`;
-
-      return {
-        id,
-        name,
-        brand,
-        symbol: getProductSymbol(brand, name),
-        change: -15.0 + ((seed % 2500) / 100),
-        category,
-        image: getCategoryImage(category),
-        rating: 4.5,
-        reviewsCount: 120,
-        prices: {
-          gratis: roundPrice(basePrice * 0.95),
-          watsons: roundPrice(basePrice * 0.98),
-          rossmann: roundPrice(basePrice * 0.96),
-          eve: roundPrice(basePrice * 0.93),
-          sephora: basePrice > 400 ? roundPrice(basePrice * 1.5) : null,
-          trendyol: roundPrice(basePrice * 0.88) as number,
-          hepsiburada: roundPrice(basePrice * 0.90) as number,
-        },
-        description: 'Özel fiyat algoritmamız tarafından simüle edilen kozmetik ürün detayları.',
-      };
-    }
-
-    return null;
+  // Fetch product detail on mount/id change
+  useEffect(() => {
+    if (!id) return;
+    const fetchDetail = async () => {
+      setLoading(true);
+      try {
+        const detail = await apiService.getProductDetail(id);
+        setApiProduct(detail);
+      } catch (err) {
+        console.error('Ürün detayı yüklenemedi:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDetail();
   }, [id]);
+
+  // Adapt ApiProductDetail to standard Product type
+  const product = useMemo(() => {
+    if (!apiProduct) return null;
+    
+    const change = apiProduct.prices[0]?.discountRate || 0.0;
+    const pricesObj: Record<string, number | null> = {
+      gratis: null, watsons: null, rossmann: null, eve: null, sephora: null, trendyol: null, hepsiburada: null
+    };
+    apiProduct.prices.forEach(p => {
+      pricesObj[p.storeKey] = p.price;
+    });
+
+    return {
+      id: apiProduct.id,
+      name: apiProduct.name,
+      brand: apiProduct.brand,
+      symbol: apiProduct.barcode || getProductSymbol(apiProduct.brand, apiProduct.name),
+      change: change,
+      category: apiProduct.category,
+      image: apiProduct.imageUrl,
+      rating: apiProduct.rating,
+      reviewsCount: apiProduct.reviewsCount,
+      prices: pricesObj as any,
+      description: apiProduct.description
+    };
+  }, [apiProduct]);
+
+  // Helper for generating standard ticker symbol
+  function getProductSymbol(brand: string, name: string): string {
+    const cleanBrand = brand.replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase().padEnd(4, 'X');
+    const cleanName = name.replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase().padEnd(4, 'X');
+    return `${cleanBrand}-${cleanName}`;
+  }
 
   const inWatchlist = useMemo(() => {
     return product ? isInWishlist(product.id) : false;
@@ -111,79 +116,61 @@ export default function ProductDetailScreen() {
 
   // Sort prices from cheapest to most expensive
   const storePricesList = useMemo(() => {
-    if (!product) return [];
+    if (!apiProduct) return [];
 
-    return Object.entries(product.prices)
-      .map(([storeKey, val]) => ({
-        storeKey,
-        storeName: STORE_NAMES[storeKey as keyof typeof STORE_NAMES],
-        price: val,
-      }))
-      .filter((item) => item.price !== null)
-      .sort((a, b) => (a.price as number) - (b.price as number));
-  }, [product]);
+    return apiProduct.prices.map((p: ApiStorePrice) => ({
+      storeKey: p.storeKey,
+      storeName: STORE_NAMES[p.storeKey as keyof typeof STORE_NAMES] || p.storeKey,
+      price: p.price,
+      discountRate: p.discountRate,
+      productUrl: p.productUrl
+    }));
+  }, [apiProduct]);
 
   const cheapest = storePricesList[0];
 
-  // Generate simulated historical price data for the selected period
+  // Extract historical price data for the selected period
   const historicalData = useMemo((): HistoryItem[] => {
-    if (!cheapest) return [];
-    const list: HistoryItem[] = [];
-    const basePrice = cheapest.price;
-    const seed = product ? product.id.charCodeAt(0) + product.id.charCodeAt(product.id.length - 1) : 42;
-
-    for (let i = 0; i < selectedPeriod; i += 3) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
-
-      // Daily fluctuation calculation based on index and cosine wave
-      const wave = Math.cos((i + seed) * 0.5) * 4 + Math.sin(i * 0.2) * 2;
-      const dailyPrice = basePrice * (1 + wave / 100);
-      const prevPrice = basePrice * (1 + (Math.cos((i + 1 + seed) * 0.5) * 4 + Math.sin((i + 1) * 0.2) * 2) / 100);
-      const change = ((dailyPrice - prevPrice) / prevPrice) * 100;
-
-      list.push({
-        date: dateStr,
-        price: parseFloat(dailyPrice.toFixed(1)),
+    if (!apiProduct || !cheapest) return [];
+    
+    const historyList = apiProduct.priceHistory[cheapest.storeKey] || [];
+    const mapped = historyList.map((item: { date: string; price: number }, index: number) => {
+      const prevPrice = index > 0 ? historyList[index - 1].price : item.price;
+      const change = prevPrice !== 0 ? ((item.price - prevPrice) / prevPrice) * 100 : 0;
+      return {
+        date: item.date,
+        price: item.price,
         change: parseFloat(change.toFixed(1)),
-      });
-    }
+      };
+    });
 
-    return list;
-  }, [cheapest, selectedPeriod, product]);
+    // Reverse to show newest dates first
+    return [...mapped].reverse().slice(0, Math.ceil(selectedPeriod / 3));
+  }, [cheapest, selectedPeriod, apiProduct]);
 
   const openStoreUrl = (storeKey: string) => {
-    if (!product) return;
-    const query = `${product.brand} ${product.name}`;
-    let url = '';
-    switch (storeKey) {
-      case 'gratis':
-        url = `https://www.gratis.com/arama?text=${encodeURIComponent(query)}`;
-        break;
-      case 'watsons':
-        url = `https://www.watsons.com.tr/search?q=${encodeURIComponent(query)}`;
-        break;
-      case 'rossmann':
-        url = `https://www.rossmann.com.tr/arama?q=${encodeURIComponent(query)}`;
-        break;
-      case 'eve':
-        url = `https://www.eveshop.com.tr/arama?q=${encodeURIComponent(query)}`;
-        break;
-      case 'sephora':
-        url = `https://www.sephora.com.tr/arama?q=${encodeURIComponent(query)}`;
-        break;
-      case 'trendyol':
-        url = `https://www.trendyol.com/sr?q=${encodeURIComponent(query)}`;
-        break;
-      case 'hepsiburada':
-        url = `https://www.hepsiburada.com/ara?q=${encodeURIComponent(query)}`;
-        break;
-      default:
-        url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+    if (!apiProduct || !product) return;
+    const storeInfo = apiProduct.prices.find((p: ApiStorePrice) => p.storeKey === storeKey);
+    if (storeInfo && storeInfo.productUrl) {
+      Linking.openURL(storeInfo.productUrl).catch(() => {
+        const query = `${product.brand} ${product.name}`;
+        Linking.openURL(`https://www.google.com/search?q=${encodeURIComponent(query)}`);
+      });
+    } else {
+      const query = `${product.brand} ${product.name}`;
+      let url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+      Linking.openURL(url);
     }
-    Linking.openURL(url).catch((err) => console.error("URL açma hatası:", err));
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={themeColors.accent} />
+        <Text style={{ marginTop: 12, color: themeColors.textSecondary, fontSize: 13, fontWeight: '600' }}>Ürün detayları yükleniyor...</Text>
+      </SafeAreaView>
+    );
+  }
 
   if (!product) {
     return (

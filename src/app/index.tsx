@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -36,13 +36,13 @@ import {
 
 import { Colors, Spacing, BottomTabInset } from '@/constants/theme';
 import { 
-  searchAndSimulateProducts, 
   CATEGORIES, 
   Product, 
   getCategoryImage, 
   getProductSymbol
 } from '@/constants/mockData';
 import { useWishlist } from '@/context/WishlistContext';
+import { apiService } from '@/services/api';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = 150;
@@ -95,50 +95,52 @@ export default function HomeScreen() {
   // Lazy loading state
   const [visibleLimit, setVisibleLimit] = useState(16);
 
-  // Load all simulated products
-  const allProducts = useMemo(() => {
-    return searchAndSimulateProducts('', 'all');
+  // API backed product lists
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [dealsOfDay, setDealsOfDay] = useState<Product[]>([]);
+  const [popularProducts, setPopularProducts] = useState<Product[]>([]);
+  const [suggestions, setSuggestions] = useState<Product[]>([]);
+
+  // Load initial lists
+  useEffect(() => {
+    const loadInitialData = async () => {
+      const all = await apiService.getProducts({});
+      setAllProducts(all);
+      
+      const deals = all.filter(p => p.change < 0).sort((a, b) => a.change - b.change).slice(0, 8);
+      setDealsOfDay(deals);
+
+      const popular = [...all].sort((a, b) => b.reviewsCount - a.reviewsCount).slice(0, 8);
+      setPopularProducts(popular);
+    };
+    loadInitialData();
   }, []);
 
-  // Filtered products list for general grid / category filtering
-  const filteredProducts = useMemo(() => {
-    let list = [...allProducts];
-    if (selectedCategory !== 'all') {
-      list = list.filter(p => p.category === selectedCategory);
+  // Fetch filtered products when category or search changes
+  useEffect(() => {
+    const fetchFiltered = async () => {
+      const results = await apiService.getProducts({
+        category: selectedCategory,
+        query: searchQuery
+      });
+      setFilteredProducts(results);
+    };
+    fetchFiltered();
+  }, [selectedCategory, searchQuery]);
+
+  // Fetch suggestions for search autocomplete
+  useEffect(() => {
+    if (searchQuery.trim().length === 0) {
+      setSuggestions([]);
+      return;
     }
-    if (searchQuery.trim().length > 0) {
-      list = list.filter(p => 
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.symbol.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-    return list;
-  }, [allProducts, selectedCategory, searchQuery]);
-
-  // Suggestions search list
-  const suggestions = useMemo(() => {
-    if (searchQuery.trim().length === 0) return [];
-    return allProducts.filter(p => 
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.brand.toLowerCase().includes(searchQuery.toLowerCase())
-    ).slice(0, 5);
-  }, [allProducts, searchQuery]);
-
-  // Günün Fırsatları: Ortalama fiyat düşüşü (change < 0) olan en yüksek indirimliler
-  const dealsOfDay = useMemo(() => {
-    return allProducts
-      .filter(p => p.change < 0)
-      .sort((a, b) => a.change - b.change)
-      .slice(0, 8);
-  }, [allProducts]);
-
-  // Popüler Ürünler: Yorum sayısı (reviewsCount) en yüksek olanlar
-  const popularProducts = useMemo(() => {
-    return allProducts
-      .sort((a, b) => b.reviewsCount - a.reviewsCount)
-      .slice(0, 8);
-  }, [allProducts]);
+    const fetchSuggestions = async () => {
+      const results = await apiService.getProducts({ query: searchQuery });
+      setSuggestions(results.slice(0, 5));
+    };
+    fetchSuggestions();
+  }, [searchQuery]);
 
   // Find cheapest price helper
   const getCheapestPriceInfo = (prices: Product['prices']) => {

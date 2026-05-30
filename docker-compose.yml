@@ -1,9 +1,37 @@
 version: '3.8'
 
 services:
+  db:
+    image: postgres:15-alpine
+    container_name: makyaj_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: makyajpassword123
+      POSTGRES_DB: makyajdb
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: always
+
+  api:
+    build: ./backend
+    container_name: makyaj_backend_api
+    environment:
+      - PORT=4000
+      - DATABASE_URL=postgresql://postgres:makyajpassword123@db:5432/makyajdb
+      - NODE_ENV=production
+    depends_on:
+      - db
+    restart: always
+
   glowprice-web:
     build: .
     container_name: glowprice_app
     ports:
       - "3001:80"
+    depends_on:
+      - api
     restart: always
+
+volumes:
+  pgdata:

@@ -27,7 +27,8 @@ import {
 
 import { Colors, Spacing, BottomTabInset } from '@/constants/theme';
 import { useWishlist, WishlistItem } from '@/context/WishlistContext';
-import { searchAndSimulateProducts, Product } from '@/constants/mockData';
+import { Product } from '@/constants/mockData';
+import { apiService } from '@/services/api';
 
 export default function WishlistScreen() {
   const scheme = useColorScheme();
@@ -58,13 +59,18 @@ export default function WishlistScreen() {
   const [tempNote, setTempNote] = useState('');
 
   // Handle search suggestions
-  const handleSearchTextChange = (text: string) => {
+  const handleSearchTextChange = async (text: string) => {
     setSearchText(text);
     if (text.trim().length >= 2) {
-      const results = searchAndSimulateProducts(text, 'all')
-        .filter(p => !items.some(item => item.product.id === p.id && item.group === activeGroup))
-        .slice(0, 5);
-      setSearchResults(results);
+      try {
+        const results = await apiService.getProducts({ query: text });
+        const filtered = results
+          .filter(p => !items.some(item => item.product.id === p.id && item.group === activeGroup))
+          .slice(0, 5);
+        setSearchResults(filtered);
+      } catch (err) {
+        console.error('Hızlı ekleme arama hatası:', err);
+      }
     } else {
       setSearchResults([]);
     }
