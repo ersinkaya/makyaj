@@ -10,11 +10,10 @@ services:
       POSTGRES_DB: makyajdb
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
     restart: always
 
   api:
-    build: ./backend
+    image: ghcr.io/ersinkaya/makyaj-backend:latest
     container_name: makyaj_backend_api
     environment:
       - PORT=4000
@@ -25,7 +24,7 @@ services:
     restart: always
 
   glowprice-web:
-    build: .
+    image: ghcr.io/ersinkaya/makyaj:latest
     container_name: glowprice_app
     ports:
       - "3001:80"
