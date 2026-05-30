@@ -6,7 +6,6 @@ import {
   FlatList,
   Pressable,
   TextInput,
-  SafeAreaView,
   Platform,
   useColorScheme,
   KeyboardAvoidingView,
@@ -14,6 +13,7 @@ import {
   Modal,
   Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { 
   X, 
@@ -29,8 +29,9 @@ import {
   Layers,
   Smile,
   Bookmark,
-  HelpCircle,
-  Compass
+  Compass,
+  Scissors,
+  Wind
 } from 'lucide-react-native';
 
 import { Colors, Spacing, BottomTabInset } from '@/constants/theme';
@@ -136,9 +137,9 @@ export default function WishlistScreen() {
       case 'kalem': return <Layers color={color} size={size} />;
       case 'allik': return <Smile color={color} size={size} />;
       case 'far': return <Bookmark color={color} size={size} />;
-      case 'oje': return <HelpCircle color={color} size={size} />;
+      case 'oje': return <Scissors color={color} size={size} />;
       case 'cilt': return <Compass color={color} size={size} />;
-      case 'sac': return <HelpCircle color={color} size={size} />;
+      case 'sac': return <Wind color={color} size={size} />;
       default: return <Sparkles color={color} size={size} />;
     }
   };
@@ -509,7 +510,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: Spacing.three,
-    paddingTop: Platform.OS === 'ios' ? Spacing.two : Spacing.four,
+    paddingTop: Spacing.two,
     paddingBottom: Spacing.three,
   },
   titleText: {

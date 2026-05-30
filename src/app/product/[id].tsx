@@ -6,12 +6,12 @@ import {
   Image,
   ScrollView,
   Pressable,
-  SafeAreaView,
   Platform,
   useColorScheme,
   Linking,
   ActivityIndicator
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { 
   ArrowLeft, 
@@ -465,7 +465,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: Spacing.three,
-    paddingTop: Platform.OS === 'ios' ? Spacing.two : Spacing.four,
+    paddingTop: Spacing.two,
     paddingBottom: Spacing.two,
     borderBottomWidth: 1,
   },

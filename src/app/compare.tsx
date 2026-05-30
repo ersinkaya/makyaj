@@ -6,12 +6,12 @@ import {
   FlatList,
   Pressable,
   ScrollView,
-  SafeAreaView,
   Platform,
   useColorScheme,
   Linking,
   Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { 
   Check, 
@@ -431,7 +431,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: Spacing.three,
-    paddingTop: Platform.OS === 'ios' ? Spacing.two : Spacing.four,
+    paddingTop: Spacing.two,
     paddingBottom: Spacing.three,
   },
   titleText: {
