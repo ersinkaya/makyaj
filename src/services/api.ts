@@ -75,6 +75,11 @@ export const apiService = {
       
       const data = await response.json() as ApiProductSummary[];
       
+      if (!data || data.length === 0) {
+        console.warn('Veritabanında ürün bulunamadı, mock veriler kullanılıyor.');
+        return searchAndSimulateProducts(filters.query || '', filters.category || 'all');
+      }
+      
       // Gelen veriyi Expo modeline uyarla
       return data.map((item: ApiProductSummary): Product => {
         const pricesObj: Record<string, number | null> = {
